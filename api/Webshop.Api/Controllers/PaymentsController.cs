@@ -1,0 +1,63 @@
+using Microsoft.AspNetCore.Mvc;
+using Stripe.Checkout;
+using Webshop.Api.Models;
+using WebshopProduct = Webshop.Api.Models.Product;
+
+namespace Webshop.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class PaymentsController : ControllerBase
+    {
+        [HttpPost("create-checkout-session")]
+        public IActionResult CreateCheckoutSession([FromBody] List<WebshopProduct> products)
+        {
+            var domain = "http://localhost:3000"; // Replace with your frontend domain in production
+
+            var lineItems = products.Select(product => new SessionLineItemOptions
+            {
+                Quantity = product.Quantity,
+                PriceData = new SessionLineItemPriceDataOptions
+                {
+                    Currency = "dkk",
+                    UnitAmount = (long)(product.Price * 100), // convert to øre
+                    ProductData = new SessionLineItemPriceDataProductDataOptions
+                    {
+                        Name = product.Name,
+                        Description = product.Description,
+                        Images = new List<string> { product.ImageUrl }
+                    }
+                }
+            }).ToList();
+
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                LineItems = lineItems,
+                Mode = "payment",
+                SuccessUrl = domain + "/receipt?session_id={CHECKOUT_SESSION_ID}",
+                CancelUrl = domain + "/cancel"
+            };
+
+            var service = new SessionService();
+            var session = service.Create(options);
+
+            return Ok(new { url = session.Url });
+        }
+
+        [HttpGet("session/{sessionId}")]
+        public IActionResult GetCheckoutSession(string sessionId)
+        {
+            var service = new SessionService();
+            var session = service.Get(sessionId);
+
+            return Ok(new
+            {
+                id = session.Id,
+                amount_total = session.AmountTotal,
+                customer_email = session.CustomerEmail,
+                payment_status = session.PaymentStatus
+            });
+        }
+    }
+}

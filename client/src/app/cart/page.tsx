@@ -1,15 +1,14 @@
-'use client';
+"use client";
 
-import { useCart } from '@/context/CartContext';
-import Link from 'next/link';
+import { useCart } from "@/context/CartContext";
+import Link from "next/link";
+import CheckoutButton from "@/components/CheckoutButton";
 
 export default function CartPage() {
-  const { cart, removeFromCart, increaseQuantity, decreaseQuantity } = useCart();
+  const { cart, removeFromCart, increaseQuantity, decreaseQuantity } =
+    useCart();
 
-  const total = cart.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
+  const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   if (cart.length === 0) {
     return (
@@ -80,6 +79,9 @@ export default function CartPage() {
 
       <div className="text-right text-xl font-bold text-blue-800">
         Total: ${total.toFixed(2)}
+      </div>
+      <div className="text-right">
+        <CheckoutButton products={cart} />
       </div>
     </div>
   );
