@@ -124,4 +124,4 @@ Let me know if you want:
 
 - A dev database setup for PostgreSQL via Docker Compose
 
-Or anything else to tailor it to your workflow.
+Or anything else to tailor it to your workflow..
