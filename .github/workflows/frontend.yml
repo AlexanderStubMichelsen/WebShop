@@ -2,6 +2,8 @@ name: Deploy Frontend
 
 on:
   push:
+    branches:
+      - main  # or your active branch
     paths:
       - 'client/**'
       - '.github/workflows/frontend.yml'
