@@ -3,7 +3,7 @@ name: Deploy Frontend
 on:
   push:
     branches:
-      - main  # adjust if using another branch
+      - main
     paths:
       - 'client/**'
       - '.github/workflows/frontend.yml'
@@ -31,7 +31,10 @@ jobs:
       env:
         NEXT_PUBLIC_API_URL: https://webshop-api.devdisplay.online
 
-    - name: 🚀 Copy exported frontend to server via SCP
+    - name: 📂 Debug .next/out contents
+      run: ls -la client/.next/out
+
+    - name: 🚀 Copy frontend to server via SCP
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.SERVER_HOST }}
