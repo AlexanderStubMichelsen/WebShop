@@ -20,7 +20,7 @@ export default function ReceiptContent() {
 
   useEffect(() => {
     if (sessionId) {
-      fetch(`http://localhost:5195/api/payments/session/${sessionId}`)
+      fetch(`https://webshop-api.devdisplay.online/api/payments/session/${sessionId}`)
         .then((res) => res.json())
         .then(setSession);
     }

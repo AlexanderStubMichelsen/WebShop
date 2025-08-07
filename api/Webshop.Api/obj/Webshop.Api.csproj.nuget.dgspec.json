@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\Webshop.Api.csproj": {}
+    "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.api\\Webshop.Api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\Webshop.Api.csproj": {
+    "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.api\\Webshop.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\Webshop.Api.csproj",
+        "projectUniqueName": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.api\\Webshop.Api.csproj",
         "projectName": "Webshop.Api",
-        "projectPath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\Webshop.Api.csproj",
+        "projectPath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.api\\Webshop.Api.csproj",
         "packagesPath": "C:\\Users\\alexa\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\obj\\",
+        "outputPath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -90,12 +90,6 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.NETCore.App.Host.linux-x64",
-              "version": "[8.0.18, 8.0.18]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -105,11 +99,6 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
-        }
-      },
-      "runtimes": {
-        "linux-x64": {
-          "#import": []
         }
       }
     }
