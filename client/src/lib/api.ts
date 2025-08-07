@@ -1,7 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+// client/src/lib/api.ts
 
 export async function getProducts() {
-  const res = await fetch(`${API_URL}/api/products`, {
+  const res = await fetch("https://localhost:5000/api/products", {
     next: { revalidate: 0 },
   });
   if (!res.ok) throw new Error("Failed to fetch products");
