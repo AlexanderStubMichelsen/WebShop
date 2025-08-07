@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "+6mQtE1MqiY=",
+  "dgSpecHash": "GxBKa/ulk9w=",
   "success": true,
-  "projectFilePath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\Webshop.Api.csproj",
+  "projectFilePath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.api\\Webshop.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\alexa\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\alexa\\.nuget\\packages\\microsoft.aspnetcore.openapi\\8.0.5\\microsoft.aspnetcore.openapi.8.0.5.nupkg.sha512",
