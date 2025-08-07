@@ -1,0 +1,4 @@
+# Ignore .NET build output
+api/Webshop.Api/bin/
+api/Webshop.Api/obj/
+api/Webshop.Api/publish/
