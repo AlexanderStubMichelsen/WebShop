@@ -13,11 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Webshop.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-<<<<<<< HEAD
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4419d0acb81f79df7684596f38c33f0542dc92ba")]
-=======
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4c256b671dc80638c5d9793c3d436d8b2ead469e")]
->>>>>>> parent of 4419d0a (https://webshop-api.devdisplay.online)
 [assembly: System.Reflection.AssemblyProductAttribute("Webshop.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Webshop.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

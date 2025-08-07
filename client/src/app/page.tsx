@@ -9,7 +9,7 @@ export default function HomePage() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    fetch('http://localhost:5195/api/products') // Change if needed
+    fetch('https://webshop-api.devdisplay.online/api/products') // Change if needed
       .then((res) => res.json())
       .then(setProducts)
       .catch((err) => console.error('Failed to fetch products:', err));
