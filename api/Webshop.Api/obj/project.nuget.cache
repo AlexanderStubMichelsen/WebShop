@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "O/sOn7szW64=",
+  "dgSpecHash": "+6mQtE1MqiY=",
   "success": true,
   "projectFilePath": "C:\\Users\\alexa\\Documents\\GitHub\\WebShop\\api\\Webshop.Api\\Webshop.Api.csproj",
   "expectedPackageFiles": [
@@ -62,8 +62,7 @@
     "C:\\Users\\alexa\\.nuget\\packages\\system.text.encoding.codepages\\6.0.0\\system.text.encoding.codepages.6.0.0.nupkg.sha512",
     "C:\\Users\\alexa\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
     "C:\\Users\\alexa\\.nuget\\packages\\system.text.json\\8.0.0\\system.text.json.8.0.0.nupkg.sha512",
-    "C:\\Users\\alexa\\.nuget\\packages\\system.threading.channels\\6.0.0\\system.threading.channels.6.0.0.nupkg.sha512",
-    "C:\\Users\\alexa\\.nuget\\packages\\microsoft.netcore.app.host.linux-x64\\8.0.18\\microsoft.netcore.app.host.linux-x64.8.0.18.nupkg.sha512"
+    "C:\\Users\\alexa\\.nuget\\packages\\system.threading.channels\\6.0.0\\system.threading.channels.6.0.0.nupkg.sha512"
   ],
   "logs": []
 }
