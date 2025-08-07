@@ -41,3 +41,6 @@ next-env.d.ts
 # Ignore build artifacts
 api/Webshop.Api/bin/
 api/Webshop.Api/obj/
+
+# Dependency directories
+node_modules/
