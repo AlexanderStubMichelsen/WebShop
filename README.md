@@ -107,3 +107,4 @@ Docker support
 📄 License
 
 MIT — Free for personal or commercial use.
+
