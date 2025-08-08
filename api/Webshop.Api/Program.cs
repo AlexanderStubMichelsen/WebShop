@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Webshop.Api.Data;
-using Webshop.Api.Models;
 using Stripe;
 using WebshopProduct = Webshop.Api.Models.Product; // ✅ Alias to avoid conflict with Stripe.Product
 
