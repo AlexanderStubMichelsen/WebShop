@@ -55,9 +55,6 @@ Visit Swagger UI: https://localhost:5001/swagger
 
 🌐 Frontend Setup
 
-bash
-Kopiér
-Rediger
 cd client
 npm install
 npm run dev
