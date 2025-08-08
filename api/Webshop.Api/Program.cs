@@ -52,7 +52,8 @@ app.MapControllers(); // Enables [ApiController]-based routing
 
 // Enable CORS for frontend
 app.UseCors(policy =>
-    policy.WithOrigins("http://localhost:3000")
+    policy.WithOrigins("http://localhost:3000",
+                      "https://shop.devdisplay.online")
           .AllowAnyMethod()
           .AllowAnyHeader()
 );
