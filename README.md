@@ -107,21 +107,3 @@ Docker support
 📄 License
 
 MIT — Free for personal or commercial use.
-
-yaml
-
-Kopiér
-
-Rediger
-
----
-
-Let me know if you want:
-
-- A version in Danish 🇩🇰  
-
-- A Docker section added  
-
-- A dev database setup for PostgreSQL via Docker Compose
-
-Or anything else to tailor it to your workflow...
