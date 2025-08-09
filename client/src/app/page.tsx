@@ -9,8 +9,14 @@ export default function HomePage() {
   const { addToCart } = useCart();
 
     useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5195';
+    // Use hostname detection for production
+    const isProduction = typeof window !== 'undefined' && window.location.hostname === 'shop.devdisplay.online';
+    const apiUrl = isProduction 
+      ? 'https://webshop-api.devdisplay.online' 
+      : 'http://localhost:5195';
+    
     console.log('Environment variable NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+    console.log('Is production:', isProduction);
     console.log('Using API URL:', apiUrl);
     console.log('Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'unknown');
     
