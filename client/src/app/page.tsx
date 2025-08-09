@@ -15,11 +15,6 @@ export default function HomePage() {
       ? 'https://webshop-api.devdisplay.online' 
       : 'http://localhost:5195';
     
-    console.log('Environment variable NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
-    console.log('Is production:', isProduction);
-    console.log('Using API URL:', apiUrl);
-    console.log('Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'unknown');
-    
     fetch(`${apiUrl}/api/products`)
       .then((res) => res.json())
       .then(setProducts)
