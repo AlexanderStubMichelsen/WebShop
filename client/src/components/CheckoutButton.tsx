@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Product } from '@/types/Product';
+import { getApiUrl } from '@/lib/config';
 
 type Props = {
   products: Product[];
@@ -9,10 +10,7 @@ type Props = {
 
 const CheckoutButton: React.FC<Props> = ({ products }) => {
   const handleCheckout = async () => {
-    const isProduction = typeof window !== 'undefined' && window.location.hostname === 'shop.devdisplay.online';
-    const apiUrl = isProduction 
-      ? 'https://webshop-api.devdisplay.online' 
-      : 'http://localhost:5195';
+    const apiUrl = getApiUrl();
 
     const res = await fetch(`${apiUrl}/api/payments/create-checkout-session`, {
       method: 'POST',

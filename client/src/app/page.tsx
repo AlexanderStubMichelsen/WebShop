@@ -3,17 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { Product } from '@/lib/products';
+import { getApiUrl } from '@/lib/config';
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const { addToCart } = useCart();
 
-    useEffect(() => {
-    // Use hostname detection for production
-    const isProduction = typeof window !== 'undefined' && window.location.hostname === 'shop.devdisplay.online';
-    const apiUrl = isProduction 
-      ? 'https://webshop-api.devdisplay.online' 
-      : 'http://localhost:5195';
+  useEffect(() => {
+    const apiUrl = getApiUrl();
+    
+    console.log('Using API URL:', apiUrl);
     
     fetch(`${apiUrl}/api/products`)
       .then((res) => res.json())

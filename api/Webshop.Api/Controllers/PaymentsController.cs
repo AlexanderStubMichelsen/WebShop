@@ -12,8 +12,6 @@ namespace Webshop.Api.Controllers
         [HttpPost("create-checkout-session")]
         public IActionResult CreateCheckoutSession([FromBody] List<WebshopProduct> products)
         {
-            var domain = "http://localhost:3000"; // Replace with your frontend domain in production
-
             var lineItems = products.Select(product => new SessionLineItemOptions
             {
                 Quantity = product.Quantity,
@@ -35,8 +33,8 @@ namespace Webshop.Api.Controllers
                 PaymentMethodTypes = new List<string> { "card" },
                 LineItems = lineItems,
                 Mode = "payment",
-                SuccessUrl = domain + "/receipt?session_id={CHECKOUT_SESSION_ID}",
-                CancelUrl = domain + "/cancel"
+                SuccessUrl = GetBaseUrl(Request) + "/receipt?session_id={CHECKOUT_SESSION_ID}",
+                CancelUrl = GetBaseUrl(Request) + "/cart",
             };
 
             var service = new SessionService();
@@ -58,6 +56,19 @@ namespace Webshop.Api.Controllers
                 customer_email = session.CustomerEmail,
                 payment_status = session.PaymentStatus
             });
+        }
+
+        private string GetBaseUrl(HttpRequest request)
+        {
+            // Check if we're in production by looking at the host
+            var host = request.Headers["Host"].ToString();
+
+            if (host.Contains("webshop-api.devdisplay.online"))
+            {
+                return "https://shop.devdisplay.online";
+            }
+
+            return "http://localhost:3000";
         }
     }
 }
