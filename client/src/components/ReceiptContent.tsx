@@ -20,9 +20,18 @@ export default function ReceiptContent() {
 
   useEffect(() => {
     if (sessionId) {
-      fetch(`http://localhost:5195/api/payments/session/${sessionId}`)
-        .then((res) => res.json())
-        .then(setSession);
+      const isProduction = typeof window !== 'undefined' && window.location.hostname === 'shop.devdisplay.online';
+      const apiUrl = isProduction 
+        ? 'https://webshop-api.devdisplay.online' 
+        : 'http://localhost:5195';
+
+      const fetchSession = async () => {
+        const res = await fetch(`${apiUrl}/api/payments/session/${sessionId}`);
+        const data = await res.json();
+        setSession(data);
+      };
+
+      fetchSession();
     }
   }, [sessionId]);
 
