@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Specific rules for static pages (check these first)
+RewriteRule ^receipt/?$ /receipt.html [L]
+RewriteRule ^cart/?$ /cart.html [L]
+
+# Handle client-side routing for Next.js static export (fallback)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /index.html [L]
