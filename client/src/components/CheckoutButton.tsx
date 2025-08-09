@@ -9,7 +9,12 @@ type Props = {
 
 const CheckoutButton: React.FC<Props> = ({ products }) => {
   const handleCheckout = async () => {
-    const res = await fetch('http://localhost:5195/api/payments/create-checkout-session', {
+    const isProduction = typeof window !== 'undefined' && window.location.hostname === 'shop.devdisplay.online';
+    const apiUrl = isProduction 
+      ? 'https://webshop-api.devdisplay.online' 
+      : 'http://localhost:5195';
+
+    const res = await fetch(`${apiUrl}/api/payments/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
