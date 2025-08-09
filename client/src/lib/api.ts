@@ -1,7 +1,11 @@
 // client/src/lib/api.ts
 
 export async function getProducts() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5195';
+  const isProduction = typeof window !== 'undefined' && window.location.hostname === 'shop.devdisplay.online';
+    const apiUrl = isProduction 
+      ? 'https://webshop-api.devdisplay.online' 
+      : 'http://localhost:5195';
+      
   const res = await fetch(`${apiUrl}/api/products`, {
     next: { revalidate: 0 },
   });
