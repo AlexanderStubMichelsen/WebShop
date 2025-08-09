@@ -8,8 +8,12 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const { addToCart } = useCart();
 
-  useEffect(() => {
+    useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5195';
+    console.log('Environment variable NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+    console.log('Using API URL:', apiUrl);
+    console.log('Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'unknown');
+    
     fetch(`${apiUrl}/api/products`)
       .then((res) => res.json())
       .then(setProducts)
