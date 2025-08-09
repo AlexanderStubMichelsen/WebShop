@@ -9,7 +9,7 @@ export default function HomePage() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    const apiUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:5195';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5195';
     fetch(`${apiUrl}/api/products`)
       .then((res) => res.json())
       .then(setProducts)
