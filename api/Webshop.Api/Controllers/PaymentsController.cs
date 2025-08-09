@@ -28,13 +28,15 @@ namespace Webshop.Api.Controllers
                 }
             }).ToList();
 
+            var frontendUrl = GetFrontendUrl(Request);
+
             var options = new SessionCreateOptions
             {
                 PaymentMethodTypes = new List<string> { "card" },
                 LineItems = lineItems,
                 Mode = "payment",
-                SuccessUrl = GetBaseUrl(Request) + "/receipt?session_id={CHECKOUT_SESSION_ID}",
-                CancelUrl = GetBaseUrl(Request) + "/cart",
+                SuccessUrl = $"{frontendUrl}/receipt?session_id={{CHECKOUT_SESSION_ID}}",
+                CancelUrl = $"{frontendUrl}/cart",
             };
 
             var service = new SessionService();
@@ -58,16 +60,16 @@ namespace Webshop.Api.Controllers
             });
         }
 
-        private string GetBaseUrl(HttpRequest request)
+        private string GetFrontendUrl(HttpRequest request)
         {
-            // Check if we're in production by looking at the host
+            // Check if we're in production by looking at the request host
             var host = request.Headers["Host"].ToString();
-
+            
             if (host.Contains("webshop-api.devdisplay.online"))
             {
                 return "https://shop.devdisplay.online";
             }
-
+            
             return "http://localhost:3000";
         }
     }
