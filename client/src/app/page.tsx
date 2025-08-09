@@ -9,7 +9,8 @@ export default function HomePage() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    fetch('https://webshop-api.devdisplay.online/api/products') // Change if needed
+    const apiUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:5195';
+    fetch(`${apiUrl}/api/products`)
       .then((res) => res.json())
       .then(setProducts)
       .catch((err) => console.error('Failed to fetch products:', err));
