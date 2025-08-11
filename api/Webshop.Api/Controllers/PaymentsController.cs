@@ -35,6 +35,8 @@ namespace Webshop.Api.Controllers
                 PaymentMethodTypes = new List<string> { "card" },
                 LineItems = lineItems,
                 Mode = "payment",
+                CustomerCreation = "always", // This ensures a customer is created
+                BillingAddressCollection = "required", // Optional: also collect billing address
                 SuccessUrl = $"{frontendUrl}/receipt?session_id={{CHECKOUT_SESSION_ID}}",
                 CancelUrl = $"{frontendUrl}/cart",
             };
@@ -49,13 +51,26 @@ namespace Webshop.Api.Controllers
         public IActionResult GetCheckoutSession(string sessionId)
         {
             var service = new SessionService();
-            var session = service.Get(sessionId);
+            var session = service.Get(sessionId, new SessionGetOptions
+            {
+                Expand = new List<string> { "customer" }
+            });
+
+            string customerEmail = session.CustomerEmail;
+            
+            // If session doesn't have email, try to get it from the customer object
+            if (string.IsNullOrEmpty(customerEmail) && session.Customer != null)
+            {
+                var customerService = new Stripe.CustomerService();
+                var customer = customerService.Get(session.Customer.Id);
+                customerEmail = customer.Email;
+            }
 
             return Ok(new
             {
                 id = session.Id,
                 amount_total = session.AmountTotal,
-                customer_email = session.CustomerEmail,
+                customer_email = customerEmail,
                 payment_status = session.PaymentStatus
             });
         }
@@ -64,12 +79,12 @@ namespace Webshop.Api.Controllers
         {
             // Check if we're in production by looking at the request host
             var host = request.Headers["Host"].ToString();
-            
+
             if (host.Contains("webshop-api.devdisplay.online"))
             {
                 return "https://shop.devdisplay.online";
             }
-            
+
             return "http://localhost:3000";
         }
     }
