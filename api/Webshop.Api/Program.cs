@@ -33,7 +33,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WebshopDbContext>();
-    db.Database.Migrate(); // This will apply migrations and seed data from HasData()
+    db.Database.Migrate();
 }
 
 // Swagger UI for development
@@ -45,16 +45,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapControllers(); // Enables [ApiController]-based routing
-
-
-// Enable CORS for frontend
+// Enable CORS BEFORE mapping controllers
 app.UseCors(policy =>
     policy.WithOrigins("http://localhost:3000",
                       "https://shop.devdisplay.online")
           .AllowAnyMethod()
           .AllowAnyHeader()
 );
+
+app.MapControllers(); // Enables [ApiController]-based routing
 
 // --- API Endpoints ---
 
