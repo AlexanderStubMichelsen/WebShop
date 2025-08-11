@@ -30,11 +30,18 @@ jobs:
         source: publish/
         target: ${{ secrets.SERVER_BACKEND_PATH }}
 
-    - name: Restart backend service via SSH
+    - name: Remove old SQLite DB and restart backend
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.SERVER_HOST }}
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          sudo systemctl restart webshop-api.service
+          # Stop the API
+          sudo systemctl stop webshop-api.service
+          
+          # Remove the existing SQLite DB (adjust name/path if different)
+          sudo rm -f ${{ secrets.SERVER_BACKEND_PATH }}/app.db
+
+          # Restart the API (will recreate DB via migrations)
+          sudo systemctl start webshop-api.service
