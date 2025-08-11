@@ -12,37 +12,43 @@ namespace Webshop.Api.Controllers
         [HttpPost("create-checkout-session")]
         public IActionResult CreateCheckoutSession([FromBody] List<WebshopProduct> products)
         {
-            var lineItems = products.Select(product => new SessionLineItemOptions
+            var lineItems = new List<SessionLineItemOptions>();
+            foreach (var product in products)
             {
-                Quantity = product.Quantity,
-                PriceData = new SessionLineItemPriceDataOptions
+                lineItems.Add(new SessionLineItemOptions
                 {
-                    Currency = "dkk",
-                    UnitAmount = (long)(product.Price * 100), // convert to øre
-                    ProductData = new SessionLineItemPriceDataProductDataOptions
+                    PriceData = new SessionLineItemPriceDataOptions
                     {
-                        Name = product.Name,
-                        Description = product.Description,
-                        Images = new List<string> { product.ImageUrl }
-                    }
-                }
-            }).ToList();
+                        UnitAmount = (long)(product.Price * 100),
+                        Currency = "dkk",
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = product.Name,
+                            Description = product.Description,
+                        },
+                    },
+                    Quantity = product.Quantity,
+                });
+            }
 
             var frontendUrl = GetFrontendUrl(Request);
 
             var options = new SessionCreateOptions
             {
-                PaymentMethodTypes = new List<string> { "card" },
+                PaymentMethodTypes = new List<string> {
+                    "card",
+                    "mobilepay"  // ✅ Added MobilePay
+                },
                 LineItems = lineItems,
                 Mode = "payment",
-                CustomerCreation = "always", // This ensures a customer is created
-                BillingAddressCollection = "required", // Optional: also collect billing address
+                CustomerCreation = "always",
+                BillingAddressCollection = "required",
                 SuccessUrl = $"{frontendUrl}/receipt?session_id={{CHECKOUT_SESSION_ID}}",
                 CancelUrl = $"{frontendUrl}/cart",
             };
 
             var service = new SessionService();
-            var session = service.Create(options);
+            Session session = service.Create(options);
 
             return Ok(new { url = session.Url });
         }

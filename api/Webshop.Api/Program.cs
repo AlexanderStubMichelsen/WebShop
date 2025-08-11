@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Webshop.Api.Data;
 using Stripe;
-using WebshopProduct = Webshop.Api.Models.Product; // ✅ Alias to avoid conflict with Stripe.Product
+using WebshopProduct = Webshop.Api.Models.Product;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,17 +25,15 @@ builder.Services.AddDbContext<WebshopDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors();
-builder.Services.AddControllers(); // MUST be before `builder.Build()`
-
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Seed database
+// Apply migrations automatically
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WebshopDbContext>();
-    db.Database.EnsureCreated(); // Create DB if it doesn't exist
-    DbInitializer.Seed(db);     // Seed with sample data
+    db.Database.Migrate(); // This will apply migrations and seed data from HasData()
 }
 
 // Swagger UI for development
