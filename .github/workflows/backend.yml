@@ -1,9 +1,9 @@
-name: Deploy Backend
+name: Deploy Webshop Backend
 
 on:
   push:
     branches:
-      - main  # or your active branch
+      - main
 
 jobs:
   deploy:
@@ -21,27 +21,44 @@ jobs:
     - name: Publish API
       run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o publish
 
-    - name: Copy to server via SCP
+    - name: Copy build to server via SCP
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.SERVER_HOST }}
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: publish/
+        source: publish/**
         target: ${{ secrets.SERVER_BACKEND_PATH }}
 
-    - name: Remove old SQLite DB and restart backend
+    - name: Configure secrets in systemd and restart
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.SERVER_HOST }}
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Stop the API
-          sudo systemctl stop webshop-api.service
-          
-          # Remove the existing SQLite DB (adjust name/path if different)
-          sudo rm -f ${{ secrets.SERVER_BACKEND_PATH }}/app.db
+          set -e
 
-          # Restart the API (will recreate DB via migrations)
+          # Stop service during update (optional but safer)
+          sudo systemctl stop webshop-api.service || true
+
+          # Create a systemd drop-in to inject environment variables
+          sudo mkdir -p /etc/systemd/system/webshop-api.service.d
+
+          cat >/tmp/override.conf << 'EOF'
+          [Service]
+          Environment="SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}"
+          Environment="STRIPE__SecretKey=${{ secrets.STRIPE_SECRET_KEY }}"
+          Environment="STRIPE__WebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+          EOF
+
+          sudo mv /tmp/override.conf /etc/systemd/system/webshop-api.service.d/override.conf
+          sudo chmod 644 /etc/systemd/system/webshop-api.service.d/override.conf
+
+          # (Optional) remove SQLite DB if you truly want a fresh DB each deploy
+          # sudo rm -f ${{ secrets.SERVER_BACKEND_PATH }}/app.db
+
+          # Apply changes and restart
+          sudo systemctl daemon-reload
           sudo systemctl start webshop-api.service
+          sudo systemctl status webshop-api.service --no-pager -l || true

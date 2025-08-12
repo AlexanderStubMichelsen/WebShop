@@ -1,4 +1,3 @@
-// Data/WebshopDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using Webshop.Api.Models;
 
@@ -11,12 +10,19 @@ namespace Webshop.Api.Data
         {
         }
 
-        public DbSet<Product> Products { get; set; }
+        public DbSet<Product> Products { get; set; } = default!;
+        public DbSet<EmailLog> EmailLogs { get; set; } = default!;   // ← add this
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // Unique index for idempotency
+            modelBuilder.Entity<EmailLog>()
+                .HasIndex(e => e.SessionId)
+                .IsUnique();
+
+            // Your existing seed data...
             modelBuilder.Entity<Product>().HasData(
                 new Product { Id = 1, Name = "Eco-Friendly Backpack", Description = "Durable and stylish, made from recycled materials.", Price = 49.99M, ImageUrl = "https://picsum.photos/300?random=1" },
                 new Product { Id = 2, Name = "Noise Cancelling Headphones", Description = "High-quality sound and comfort for work or play.", Price = 129.99M, ImageUrl = "https://picsum.photos/300?random=2" },

@@ -2,3 +2,8 @@
 api/Webshop.Api/bin/
 api/Webshop.Api/obj/
 node_modules/
+
+# Database files
+api/Webshop.Api/db-shm
+api/Webshop.Api/db-wal
+api/Webshop.Api/app.db

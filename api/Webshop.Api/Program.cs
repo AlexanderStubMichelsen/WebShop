@@ -5,64 +5,72 @@ using WebshopProduct = Webshop.Api.Models.Product;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Stripe configuration
-var stripeKey = builder.Configuration["Stripe:SecretKey"];
-if (string.IsNullOrEmpty(stripeKey))
+// --- Stripe configuration (env var or appsettings) ---
+var stripeKey = Environment.GetEnvironmentVariable("STRIPE__SecretKey")
+               ?? builder.Configuration["Stripe:SecretKey"];
+if (string.IsNullOrWhiteSpace(stripeKey))
 {
     Console.WriteLine("❌ Stripe secret key is missing!");
 }
 else
 {
-    Console.WriteLine("✅ Stripe secret key loaded.");
     StripeConfiguration.ApiKey = stripeKey;
+    Console.WriteLine("✅ Stripe secret key loaded.");
 }
 
-// Register SQLite
+// --- Services ---
 builder.Services.AddDbContext<WebshopDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Swagger + CORS
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddCors();
 builder.Services.AddControllers();
+
+// CORS: frontend (Next.js) + your production shop
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AppCors", p => p
+        .WithOrigins("http://localhost:3000", "https://shop.devdisplay.online")
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
+// Register email service used by webhook/controller
+builder.Services.AddScoped<OrderEmailService>();
 
 var app = builder.Build();
 
-// Apply migrations automatically
+// --- DB migrations on startup ---
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WebshopDbContext>();
     db.Database.Migrate();
 }
 
-// Swagger UI for development
+// --- Middleware ---
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
+app.UseCors("AppCors");
+app.MapControllers();
 
-// Enable CORS BEFORE mapping controllers
-app.UseCors(policy =>
-    policy.WithOrigins("http://localhost:3000",
-                      "https://shop.devdisplay.online")
-          .AllowAnyMethod()
-          .AllowAnyHeader()
-);
+// --- Minimal APIs (keep if you still use them) ---
 
-app.MapControllers(); // Enables [ApiController]-based routing
+// Health
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-// --- API Endpoints ---
-
-// GET all products
+// Products
 app.MapGet("/api/products", async (WebshopDbContext db) =>
-    await db.Products.ToListAsync()
-);
+    await db.Products.ToListAsync());
 
-// POST a new product
 app.MapPost("/api/products", async (WebshopProduct product, WebshopDbContext db) =>
 {
     db.Products.Add(product);
