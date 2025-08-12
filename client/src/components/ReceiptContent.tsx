@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getApiUrl } from "@/lib/config";
@@ -20,47 +20,29 @@ export default function ReceiptContent() {
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const sentOnceRef = useRef(false); // guard auto-send
-  const { clearCart } = useCart();
+  const sentOnceRef = useRef(false);
   const clearedRef = useRef(false);
+  const { clearCart } = useCart();
 
-  const apiUrl = getApiUrl(); // if API is same origin, consider using '' and fetch('/api/...')
+  const apiUrl = getApiUrl();
 
   useEffect(() => {
     if (!sessionId) return;
     (async () => {
       try {
-        const res = await fetch(`${apiUrl}/api/payments/session/${sessionId}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`${apiUrl}/api/payments/session/${sessionId}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to load session (${res.status})`);
         const data = await res.json();
         setSession(data);
-      } catch (err: any) {
-        setErrorMsg(err.message || "Failed to load session");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setErrorMsg(msg || "Failed to load session");
       }
     })();
   }, [sessionId, apiUrl]);
 
-  // Clear cart once we confirm payment
-  useEffect(() => {
-    if (session?.payment_status === "paid" && !clearedRef.current) {
-      clearCart();
-      clearedRef.current = true;
-    }
-    // only re-run when payment_status changes
-  }, [session?.payment_status]);
-
-  // Auto-send once when paid and email present
-  useEffect(() => {
-    if (!session || sentOnceRef.current) return;
-    if (session.payment_status === "paid" && session.customer_email) {
-      sentOnceRef.current = true;
-      void sendOrderEmail(); // fire and forget
-    }
-  }, [session]);
-
-  const sendOrderEmail = async () => {
+  // Send order email (memoized to satisfy exhaustive-deps)
+  const sendOrderEmail = useCallback(async () => {
     if (!session?.customer_email) return;
     setErrorMsg(null);
     setSendingEmail(true);
@@ -81,43 +63,47 @@ export default function ReceiptContent() {
         const text = await res.text().catch(() => "");
         setErrorMsg(`Failed to send email (${res.status}). ${text || ""}`);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to send email");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg || "Failed to send email");
     } finally {
       setSendingEmail(false);
     }
-  };
+  }, [apiUrl, session?.id, session?.customer_email, session?.amount_total]);
+
+  // Clear cart once we confirm payment (guarded so it runs once)
+  useEffect(() => {
+    if (session?.payment_status === "paid" && !clearedRef.current) {
+      clearCart();
+      clearedRef.current = true;
+    }
+  }, [session?.payment_status, clearCart]);
+
+  // Auto-send once when paid and email present
+  useEffect(() => {
+    if (!session || sentOnceRef.current) return;
+    if (session.payment_status === "paid" && session.customer_email) {
+      sentOnceRef.current = true;
+      void sendOrderEmail();
+    }
+  }, [session, sendOrderEmail]);
 
   if (!session) return <p>Loading receipt...</p>;
 
   return (
     <div className="max-w-xl mx-auto mt-12 text-center">
-      <h1 className="text-3xl font-bold text-green-700 mb-4">
-        ✅ Payment Successful
-      </h1>
+      <h1 className="text-3xl font-bold text-green-700 mb-4">✅ Payment Successful</h1>
       <p className="mb-2">Thank you for your purchase!</p>
 
       <div className="bg-gray-100 p-4 rounded mt-4 text-left">
-        <p>
-          <strong>Session ID:</strong> {session.id}
-        </p>
-        <p>
-          <strong>Customer Email:</strong>{" "}
-          {session.customer_email || "Not provided"}
-        </p>
-        <p>
-          <strong>Amount Total:</strong>{" "}
-          {(session.amount_total / 100).toFixed(2)} DKK
-        </p>
-        <p>
-          <strong>Status:</strong> {session.payment_status}
-        </p>
+        <p><strong>Session ID:</strong> {session.id}</p>
+        <p><strong>Customer Email:</strong> {session.customer_email || "Not provided"}</p>
+        <p><strong>Amount Total:</strong> {(session.amount_total / 100).toFixed(2)} DKK</p>
+        <p><strong>Status:</strong> {session.payment_status}</p>
       </div>
 
       {errorMsg && <p className="mt-3 text-red-600">{errorMsg}</p>}
-      {emailSent && (
-        <p className="mt-4 text-green-600">✅ Confirmation email sent!</p>
-      )}
+      {emailSent && <p className="mt-4 text-green-600">✅ Confirmation email sent!</p>}
 
       {session.customer_email && !emailSent && (
         <button
@@ -129,9 +115,7 @@ export default function ReceiptContent() {
         </button>
       )}
 
-      <Link href="/" className="text-blue-500 hover:underline block mt-6">
-        Back to shop
-      </Link>
+      <Link href="/" className="text-blue-500 hover:underline block mt-6">Back to shop</Link>
     </div>
   );
 }

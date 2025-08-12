@@ -3,10 +3,10 @@
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import CheckoutButton from "@/components/CheckoutButton";
+import Image from "next/image";
 
 export default function CartPage() {
-  const { cart, removeFromCart, increaseQuantity, decreaseQuantity } =
-    useCart();
+  const { cart, removeFromCart, increaseQuantity, decreaseQuantity } = useCart();
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
@@ -35,17 +35,18 @@ export default function CartPage() {
             className="flex items-center justify-between bg-white p-4 rounded shadow"
           >
             <div className="flex items-center space-x-4">
-              <img
+              <Image
                 src={item.imageUrl}
                 alt={item.name}
+                width={80}
+                height={80}
                 className="w-20 h-20 object-cover rounded"
               />
               <div>
                 <h3 className="text-lg font-semibold">{item.name}</h3>
                 <p className="text-sm text-gray-600">{item.description}</p>
                 <div className="text-sm font-medium text-blue-700">
-                  ${item.price.toFixed(2)} x {item.quantity} = $
-                  {(item.price * item.quantity).toFixed(2)}
+                  {(item.price).toFixed(2)} DKK × {item.quantity} = {(item.price * item.quantity).toFixed(2)} DKK
                 </div>
 
                 {/* Quantity controls */}
@@ -78,7 +79,7 @@ export default function CartPage() {
       </ul>
 
       <div className="text-right text-xl font-bold text-blue-800">
-        Total: ${total.toFixed(2)}
+        Total: {total.toFixed(2)} DKK
       </div>
       <div className="text-right">
         <CheckoutButton products={cart} />

@@ -19,8 +19,8 @@ jobs:
         node-version: '20'
 
     - name: Install dependencies
+      working-directory: ./client
       run: npm ci
-      working-directory: client
       env:
         NEXT_PUBLIC_API_URL: https://webshop-api.devdisplay.online
 
