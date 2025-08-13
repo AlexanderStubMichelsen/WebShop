@@ -1,111 +1,113 @@
-# 🛍️ WebShop
+# 🛒 WebShop
 
-A full-stack webshop application built with:
-
-- ⚙️ **Backend:** ASP.NET Core Web API + PostgreSQL  
-- 🌐 **Frontend:** Next.js (React) + Tailwind CSS + TypeScript  
-- 🐘 **Database:** PostgreSQL (local dev with Docker or native install)
+A full-stack **TypeScript** e-commerce application built with **Next.js**, **ASP.NET Core**, and **SQLite**.  
+It provides a responsive, modern shopping experience with secure payments via Stripe, persistent shopping carts, and an admin-friendly backend API.
 
 ---
 
-## 🗂️ Project Structure
+## 🚀 Features
 
-WebShop/
-├── client/ # Next.js frontend
-├── api/ # ASP.NET Core Web API backend
-│ └── Webshop.Api/
-├── db/ # (Optional) SQL scripts or seed data
-└── README.md
+### Frontend (Next.js + TypeScript + Tailwind CSS)
+- Responsive, mobile-first design
+- Product catalog with images, prices, and descriptions
+- Shopping cart with quantity updates and item removal
+- Checkout flow with Stripe integration
+- Session-based login/logout with JWT authentication
+- Deployed via **Apache** on Ubuntu server
 
-## 🚀 Getting Started
+### Backend (ASP.NET Core API)
+- RESTful endpoints for products, users, cart, and payments
+- SQLite database with EF Core migrations
+- Secure authentication with JWT & bcrypt password hashing
+- Admin endpoints for product management
+- Health checks and metrics via App.Metrics + Prometheus
+- Integration tests with xUnit
 
-### ✅ Requirements
-
-- [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download)
-- [Node.js](https://nodejs.org/)
-- [PostgreSQL](https://www.postgresql.org/download/) or Docker
-- (Optional) Docker & Docker Compose
+### Database (SQLite)
+- Lightweight, file-based database (`app.db`)
+- Products table with seed data
+- User accounts with secure password storage
+- Orders & order items for purchase history
+- No separate database server required
 
 ---
 
-## ⚙️ Backend Setup
+## 🗂️ Tech Stack
 
-### 📦 Install Dependencies
+| Layer       | Technology |
+|-------------|------------|
+| Frontend    | Next.js, React, TypeScript, Tailwind CSS |
+| Backend     | ASP.NET Core 8, C# |
+| Database    | SQLite |
+| Payments    | Stripe API |
+| Deployment  | Apache2 (Frontend), systemd (Backend) |
+| CI/CD       | GitHub Actions (SCP deployment to server) |
+| Testing     | xUnit, EF Core in-memory/SQLite |
 
+---
+
+## ⚙️ Setup & Installation
+
+### 1️⃣ Clone the Repository
 ```bash
+git clone https://github.com/yourusername/webshop.git
+cd webshop
+
+2️⃣ Configure Environment Variables
+Backend (.env)
+DATABASE_PATH=app.db
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+JWT_SECRET=your_jwt_secret
+
+Frontend (.env.local)
+NEXT_PUBLIC_API_URL=http://localhost:5019
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+▶️ Running the Project
+
+Start Backend Only
 cd api/Webshop.Api
 dotnet restore
-
-"ConnectionStrings": {
-  "DefaultConnection": "Host=localhost;Port=5432;Database=webshop;Username=postgres;Password=yourpassword"
-}
-
-🛠️ Run Migrations
-
-dotnet ef migrations add InitialCreate
 dotnet ef database update
-
-▶️ Run the API
-
-bash
-Kopiér
-Rediger
 dotnet run
-Visit Swagger UI: https://localhost:5001/swagger
 
-🌐 Frontend Setup
-
+Start Frontend Only
 cd client
 npm install
 npm run dev
-Frontend runs at: http://localhost:3000
 
-📡 API Endpoints
+Start Both Frontend & Backend
+npm run start:all
+This command runs both the ASP.NET Core API and the Next.js frontend concurrently for development.
 
-Method	Route	Description
-GET	/api/products	Get all products
-POST	/api/products	Add new product
+📦 Deployment
+Frontend
+Build with:
+npm run build
+Deploy out/ directory to /var/www/html (Apache or Nginx)
 
-📦 Features
-🛍️ Browse products
+Backend
+Publish with:
+dotnet publish -c Release -o publish
+Deploy publish/ to server backend directory
 
-🧺 Add to cart with quantity
+Ensure app.db file is placed in the correct server directory
 
-📊 View cart total
+Restart backend service:
+systemctl restart webshop-backend
 
-📡 RESTful API
+🧪 Testing
+Run backend tests:
+cd api/Webshop.Api.Tests
+dotnet test
 
-🎨 Styled with Tailwind
+📸 Screenshots
+(Add screenshots of homepage, product page, cart, and checkout here)
 
-🔐 Ready for authentication & checkout integration
+📜 License
+This project is licensed under the MIT License.
 
-🚀 Deployment (Coming Soon)
+---
 
-Azure App Service (API)
-
-Azure Static Web Apps (Frontend)
-
-Azure Database for PostgreSQL Flexible Server
-
-Docker support
-
-🧠 Ideas for Next
-
-🔐 Auth (OAuth/JWT)
-
-💳 Stripe/PayPal checkout
-
-🧾 Order history
-
-📦 Admin dashboard
-
-📥 Product reviews
-
-📄 License
-
-MIT — Free for personal or commercial use.
-
-This is an edit for triggering a new GitHUb actions job to run on upload.
-
-
-
+If you want, I can also **add a “Development Workflow” section** to explain how contributors should branch, commit, and push so `npm run start:all` works without breaking anything in production. That would make the README feel more “production-grade.”
