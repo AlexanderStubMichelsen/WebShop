@@ -1,64 +1,77 @@
-// src/app/page.tsx
-import Image from "next/image";
-import Link from "next/link";
+'use client';
 
-export const metadata = {
-  title: "DevDisplay Shop",
-  description: "Welcome to the shop",
-};
+import { useEffect, useState } from 'react';
+import { useCart } from '@/context/CartContext';
+import { Product } from '@/lib/products';
+import { getApiUrl } from '@/lib/config';
 
-export default function Home() {
+export default function HomePage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const { addToCart } = useCart();
+
+  useEffect(() => {
+    const apiUrl = getApiUrl();
+    
+    console.log('Using API URL:', apiUrl);
+    
+    fetch(`${apiUrl}/api/products`)
+      .then((res) => res.json())
+      .then(setProducts)
+      .catch((err) => console.error('Failed to fetch products:', err));
+  }, []);
+
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <section className="grid gap-6 md:grid-cols-2 items-center">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">Welcome to DevDisplay</h1>
-          <p className="mt-3 text-lg text-gray-600">
-            Browse our products and complete a secure checkout. Thanks for supporting us!
-          </p>
-          <div className="mt-6 flex gap-3">
-            <Link
-              href="/products"
-              className="rounded bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700"
-            >
-              Shop now
-            </Link>
-            <Link
-              href="/"
-              className="rounded border px-5 py-2.5 hover:bg-gray-50"
-            >
-              Go to frontpage
-            </Link>
-          </div>
-        </div>
-
-        {/* Replace the src/width/height to match your actual image */}
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl shadow">
-          <Image
-            src="/hero.jpg"          // put the file in /public/hero.jpg
-            alt="Featured products"
-            fill                      // fills the parent (uses the aspect-ratio above)
-            priority                  // improves LCP for above-the-fold image
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover"
-          />
-        </div>
+    <div className="space-y-20">
+      {/* Hero Section */}
+      <section className="text-center py-20 bg-gradient-to-br from-blue-50 to-white rounded-md shadow-md">
+        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-blue-800 mb-4">
+          Welcome to MyShop
+        </h1>
+        <p className="text-gray-600 text-lg max-w-xl mx-auto mb-8">
+          Discover our latest collection of high-quality, stylish products
+          designed just for you.
+        </p>
+        <a
+          href="#products"
+          className="inline-block px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded shadow hover:bg-blue-700 transition"
+        >
+          Start Shopping new line
+        </a>
       </section>
 
-      <section className="mt-12">
-        <h2 className="text-2xl font-semibold">Popular categories</h2>
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <li className="rounded-lg border p-4 hover:shadow">
-            <Link href="/products?category=new">New Arrivals →</Link>
-          </li>
-          <li className="rounded-lg border p-4 hover:shadow">
-            <Link href="/products?category=best">Best Sellers →</Link>
-          </li>
-          <li className="rounded-lg border p-4 hover:shadow">
-            <Link href="/products?category=sale">On Sale →</Link>
-          </li>
-        </ul>
+      {/* Featured Products */}
+      <section id="products" className="max-w-6xl mx-auto px-4">
+        <h2 className="text-2xl font-semibold mb-6">Featured Products</h2>
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition flex flex-col"
+            >
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="h-40 w-full object-cover rounded mb-4"
+              />
+              <h3 className="font-semibold text-gray-800 mb-1">
+                {product.name}
+              </h3>
+              <p className="text-sm text-gray-500 mb-2">
+                {product.description}
+              </p>
+              <span className="text-blue-600 font-bold mb-3">
+                ${product.price.toFixed(2)}
+              </span>
+              <button
+                onClick={() => addToCart(product)}
+                className="mt-auto px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition"
+              >
+                Add to Cart
+              </button>
+            </div>
+          ))}
+        </div>
       </section>
-    </main>
+    </div>
   );
 }
