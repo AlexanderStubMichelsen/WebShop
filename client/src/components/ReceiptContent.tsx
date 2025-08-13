@@ -20,23 +20,19 @@ export default function ReceiptContent() {
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [serverText, setServerText] = useState<string>("");
-  const [autoSendNote, setAutoSendNote] = useState<string>("");
   const sentOnceRef = useRef(false);
   const clearedRef = useRef(false);
   const { clearCart } = useCart();
 
   const apiUrl = getApiUrl();
-  const BUILD_TAG = "receipt-v2.1"; // shows on page so you can confirm deploy
 
   // Load session data
   useEffect(() => {
     if (!sessionId) return;
     (async () => {
       try {
-        const url = `${apiUrl}/api/payments/session/${sessionId}`;
-        console.log("Fetching session:", url);
-        const res = await fetch(url, { cache: "no-store" });
+        console.log("Fetching session:", `${apiUrl}/api/payments/session/${sessionId}`);
+        const res = await fetch(`${apiUrl}/api/payments/session/${sessionId}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to load session (${res.status})`);
         const data = await res.json();
         console.log("Session data loaded:", data);
@@ -51,28 +47,15 @@ export default function ReceiptContent() {
 
   // Send order email
   const sendOrderEmail = useCallback(async () => {
-    if (!session?.id) {
-      setErrorMsg("No session loaded");
+    if (!session?.customer_email) {
+      console.warn("No customer email — skipping sendOrderEmail");
       return;
     }
-    if (!session.customer_email) {
-      setErrorMsg("No customer email on the session");
-      return;
-    }
-
     setErrorMsg(null);
-    setServerText("");
     setSendingEmail(true);
-
     try {
-      const url = `${apiUrl}/api/orders/send-confirmation`;
-      console.log("POST", url, {
-        sessionId: session.id,
-        customerEmail: session.customer_email,
-        amountTotal: session.amount_total,
-      });
-
-      const res = await fetch(url, {
+      console.log("Sending order confirmation to:", session.customer_email);
+      const res = await fetch(`${apiUrl}/api/orders/send-confirmation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -83,8 +66,6 @@ export default function ReceiptContent() {
       });
 
       const text = await res.text().catch(() => "");
-      setServerText(text);
-
       if (res.ok) {
         console.log("Email confirmation success:", text || res.status);
         setEmailSent(true);
@@ -112,40 +93,24 @@ export default function ReceiptContent() {
   // Auto-send email after payment
   useEffect(() => {
     if (!session || sentOnceRef.current) return;
-
+    console.log("Checking auto-send conditions:", session);
     if (session.payment_status === "paid" && session.customer_email) {
       sentOnceRef.current = true;
-      setAutoSendNote("Auto-send triggered.");
       void sendOrderEmail();
     } else {
-      const why = `Auto-send skipped: payment_status=${session.payment_status}, customer_email=${String(
-        session.customer_email
-      )}`;
-      setAutoSendNote(why);
-      console.log(why);
+      console.log("Auto-send skipped:", {
+        payment_status: session.payment_status,
+        customer_email: session.customer_email,
+      });
     }
   }, [session, sendOrderEmail]);
 
-  // Expose quick debug in the browser console
-  useEffect(() => {
-    (window as any).__receipt_debug = {
-      session,
-      emailSent,
-      sendingEmail,
-      errorMsg,
-      serverText,
-      autoSendNote,
-      apiUrl,
-      BUILD_TAG,
-    };
-  }, [session, emailSent, sendingEmail, errorMsg, serverText, autoSendNote, apiUrl]);
-
-  if (!session) return <p>Loading receipt… <small>({BUILD_TAG})</small></p>;
+  if (!session) return <p>Loading receipt...</p>;
 
   return (
     <div className="max-w-xl mx-auto mt-12 text-center">
-      <h1 className="text-3xl font-bold text-green-700 mb-1">✅ Payment Successful</h1>
-      <p className="mb-2">Thank you for your purchase! <small className="text-gray-500">[{BUILD_TAG}]</small></p>
+      <h1 className="text-3xl font-bold text-green-700 mb-4">✅ Payment Successful</h1>
+      <p className="mb-2">Thank you for your purchase!</p>
 
       <div className="bg-gray-100 p-4 rounded mt-4 text-left">
         <p><strong>Session ID:</strong> {session.id}</p>
@@ -154,43 +119,24 @@ export default function ReceiptContent() {
         <p><strong>Status:</strong> {session.payment_status}</p>
       </div>
 
-      {/* Email status lines */}
       {sendingEmail && <p className="mt-3">Sending confirmation email…</p>}
       {errorMsg && <p className="mt-3 text-red-600">{errorMsg}</p>}
       {emailSent && <p className="mt-4 text-green-600">✅ Confirmation email sent!</p>}
       {!sendingEmail && !emailSent && session.customer_email && (
         <p className="mt-3">A confirmation email will be sent to {session.customer_email}.</p>
       )}
-      {serverText && !emailSent && (
-        <pre className="mt-2 p-2 text-xs bg-gray-50 rounded text-left whitespace-pre-wrap">{serverText}</pre>
-      )}
 
-      {/* Actions */}
-      <div className="mt-4 flex items-center justify-center gap-3">
+      {session.customer_email && !emailSent && (
         <button
           onClick={sendOrderEmail}
-          disabled={sendingEmail || !session.customer_email}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          disabled={sendingEmail}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
           {sendingEmail ? "Sending..." : "Send Order Confirmation Email"}
         </button>
-        <Link href="/" className="text-blue-500 hover:underline">Back to shop</Link>
-      </div>
+      )}
 
-      {/* Debug panel */}
-      <details className="mt-6 text-left">
-        <summary className="cursor-pointer font-semibold">Debug</summary>
-        <div className="mt-2 text-sm">
-          <p><strong>apiUrl:</strong> {apiUrl}</p>
-          <p><strong>autoSend:</strong> {autoSendNote || "(none yet)"}</p>
-          <p><strong>emailSent:</strong> {String(emailSent)} | <strong>sendingEmail:</strong> {String(sendingEmail)}</p>
-          <p><strong>errorMsg:</strong> {errorMsg || "(none)"}</p>
-          <p><strong>serverText:</strong> {serverText ? "(see above)" : "(empty)"} </p>
-          <pre className="mt-2 p-2 bg-gray-50 rounded whitespace-pre-wrap">
-{JSON.stringify({ session }, null, 2)}
-          </pre>
-        </div>
-      </details>
+      <Link href="/" className="text-blue-500 hover:underline block mt-6">Back to shop</Link>
     </div>
   );
 }
