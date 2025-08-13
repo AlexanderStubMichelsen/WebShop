@@ -130,7 +130,13 @@ export default function ReceiptContent() {
       {/* Status messages */}
       {sendingEmail && <p className="mt-3">Sending confirmation email…</p>}
       {errorMsg && <p className="mt-3 text-red-600">{errorMsg}</p>}
-      {emailSent && <p className="mt-4 text-green-600">✅ Confirmation email sent!</p>}
+      {emailSent && <p className="mt-4 text-green-600">✅ Confirmation email sent!
+
+      <br />
+      <br />
+
+      Please check your spam folder </p>}
+
       {!sendingEmail && !emailSent && session.customer_email && (
         <p className="mt-3">A confirmation email will be sent to {session.customer_email}.</p>
       )}
@@ -148,7 +154,7 @@ export default function ReceiptContent() {
             disabled={sendingEmail}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            Send Order Confirmation Email
+            Send Order Confirmation Email <br />
           </button>
         ) : null}
         <Link href="/" className="text-blue-500 hover:underline">
