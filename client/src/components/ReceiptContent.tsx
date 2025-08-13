@@ -26,27 +26,35 @@ export default function ReceiptContent() {
 
   const apiUrl = getApiUrl();
 
+  // Load session data
   useEffect(() => {
     if (!sessionId) return;
     (async () => {
       try {
+        console.log("Fetching session:", `${apiUrl}/api/payments/session/${sessionId}`);
         const res = await fetch(`${apiUrl}/api/payments/session/${sessionId}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`Failed to load session (${res.status})`);
         const data = await res.json();
+        console.log("Session data loaded:", data);
         setSession(data);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setErrorMsg(msg || "Failed to load session");
+        console.error("Error loading session:", err);
       }
     })();
   }, [sessionId, apiUrl]);
 
-  // Send order email (memoized to satisfy exhaustive-deps)
+  // Send order email
   const sendOrderEmail = useCallback(async () => {
-    if (!session?.customer_email) return;
+    if (!session?.customer_email) {
+      console.warn("No customer email — skipping sendOrderEmail");
+      return;
+    }
     setErrorMsg(null);
     setSendingEmail(true);
     try {
+      console.log("Sending order confirmation to:", session.customer_email);
       const res = await fetch(`${apiUrl}/api/orders/send-confirmation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -57,21 +65,24 @@ export default function ReceiptContent() {
         }),
       });
 
+      const text = await res.text().catch(() => "");
       if (res.ok) {
+        console.log("Email confirmation success:", text || res.status);
         setEmailSent(true);
       } else {
-        const text = await res.text().catch(() => "");
+        console.error("Email confirmation failed:", res.status, text);
         setErrorMsg(`Failed to send email (${res.status}). ${text || ""}`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg || "Failed to send email");
+      console.error("Error sending email:", err);
     } finally {
       setSendingEmail(false);
     }
   }, [apiUrl, session?.id, session?.customer_email, session?.amount_total]);
 
-  // Clear cart once we confirm payment (guarded so it runs once)
+  // Clear cart after payment
   useEffect(() => {
     if (session?.payment_status === "paid" && !clearedRef.current) {
       clearCart();
@@ -79,12 +90,18 @@ export default function ReceiptContent() {
     }
   }, [session?.payment_status, clearCart]);
 
-  // Auto-send once when paid and email present
+  // Auto-send email after payment
   useEffect(() => {
     if (!session || sentOnceRef.current) return;
+    console.log("Checking auto-send conditions:", session);
     if (session.payment_status === "paid" && session.customer_email) {
       sentOnceRef.current = true;
       void sendOrderEmail();
+    } else {
+      console.log("Auto-send skipped:", {
+        payment_status: session.payment_status,
+        customer_email: session.customer_email,
+      });
     }
   }, [session, sendOrderEmail]);
 
@@ -102,8 +119,12 @@ export default function ReceiptContent() {
         <p><strong>Status:</strong> {session.payment_status}</p>
       </div>
 
+      {sendingEmail && <p className="mt-3">Sending confirmation email…</p>}
       {errorMsg && <p className="mt-3 text-red-600">{errorMsg}</p>}
       {emailSent && <p className="mt-4 text-green-600">✅ Confirmation email sent!</p>}
+      {!sendingEmail && !emailSent && session.customer_email && (
+        <p className="mt-3">A confirmation email will be sent to {session.customer_email}.</p>
+      )}
 
       {session.customer_email && !emailSent && (
         <button
