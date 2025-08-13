@@ -106,3 +106,4 @@ Docker support
 MIT — Free for personal or commercial use.
 
 This is an edit for triggering a new GitHUb actions job to run on upload.
+
