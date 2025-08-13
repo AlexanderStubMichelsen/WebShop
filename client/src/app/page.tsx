@@ -35,7 +35,7 @@ export default function HomePage() {
           href="#products"
           className="inline-block px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded shadow hover:bg-blue-700 transition"
         >
-          Start Shopping
+          Start Shopping new line
         </a>
       </section>
 
