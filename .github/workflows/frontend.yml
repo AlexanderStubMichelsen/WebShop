@@ -30,7 +30,7 @@ jobs:
 
       - name: Build (static export)
         working-directory: client
-        run: npm run build   # requires output:'export' in next.config
+        run: npm run build   # requires output:'export' in next.config.(js|ts)
 
       - name: Nuke old frontend files on server
         uses: appleboy/ssh-action@v1.0.0
@@ -40,22 +40,22 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            echo "DOCROOT: ${{ secrets.SERVER_FRONTEND_PATH }}"
             sudo mkdir -p ${{ secrets.SERVER_FRONTEND_PATH }}
             sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/*
             sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/client
             sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/out
             ls -la ${{ secrets.SERVER_FRONTEND_PATH }}
 
+      # ✅ Copy *contents* of client/out by stripping the first 2 path components
       - name: Copy frontend to server via SCP (contents only)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: client/out/*               # <-- contents, not the folder
+          source: client/out/**                # <— use a glob
           target: ${{ secrets.SERVER_FRONTEND_PATH }}/
-          # make sure you REMOVED any previous strip_components setting
+          strip_components: 2                  # <— drops "client/out"
 
       - name: Verify and reload Apache
         uses: appleboy/ssh-action@v1.0.0
