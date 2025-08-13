@@ -50,7 +50,7 @@ It provides a responsive, modern shopping experience with secure payments via St
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/yourusername/webshop.git
+git clone https://github.com/AlexanderStubmichelsen/webshop.git
 cd webshop
 
 2️⃣ Configure Environment Variables
