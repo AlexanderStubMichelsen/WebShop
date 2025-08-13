@@ -28,12 +28,11 @@ jobs:
         working-directory: client
         run: npm ci
 
-      # With output:'export', `next build` produces client/out automatically
       - name: Build (static export)
         working-directory: client
-        run: npm run build
+        run: npm run build   # requires output:'export' in next.config
 
-      - name: Clean target directory on server
+      - name: Nuke old frontend files on server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -41,22 +40,31 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
+            echo "Cleaning out old frontend files..."
             sudo mkdir -p ${{ secrets.SERVER_FRONTEND_PATH }}
+            # Remove ALL old build files, including accidental nested client/out dirs
             sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/*
+            sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/client
+            sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/out
 
-      - name: Copy frontend to server via SCP
+      - name: Copy frontend to server via SCP (contents only)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: client/out/*
-          target: ${{ secrets.SERVER_FRONTEND_PATH }}
+          source: client/out/*          # copy only the contents of out/
+          target: ${{ secrets.SERVER_FRONTEND_PATH }}/
+          # no strip_components here
 
-      - name: Reload Apache
+      - name: Verify and reload Apache
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: sudo systemctl reload apache2
+          script: |
+            echo "Deployed files in docroot:"
+            ls -la ${{ secrets.SERVER_FRONTEND_PATH }} | head -n 20
+            test -f ${{ secrets.SERVER_FRONTEND_PATH }}/index.html
+            sudo systemctl reload apache2
