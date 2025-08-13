@@ -2,8 +2,7 @@ name: Deploy Frontend
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -29,14 +28,11 @@ jobs:
         working-directory: client
         run: npm ci
 
-      # Build and then export to /out
-      - name: Build + Export
+      # With output:'export', `next build` produces client/out automatically
+      - name: Build (static export)
         working-directory: client
-        run: |
-          npm run build
-          npx next export
+        run: npm run build
 
-      # Remove old files on the server to avoid stale chunk issues
       - name: Clean target directory on server
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -48,7 +44,6 @@ jobs:
             sudo mkdir -p ${{ secrets.SERVER_FRONTEND_PATH }}
             sudo rm -rf ${{ secrets.SERVER_FRONTEND_PATH }}/*
 
-      # Copy the fresh build to the server
       - name: Copy frontend to server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -58,12 +53,10 @@ jobs:
           source: client/out/*
           target: ${{ secrets.SERVER_FRONTEND_PATH }}
 
-      # Reload Apache
       - name: Reload Apache
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo systemctl reload apache2
+          script: sudo systemctl reload apache2
