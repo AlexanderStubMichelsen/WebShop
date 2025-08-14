@@ -6,9 +6,33 @@ on:
       - main
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore api/Webshop.sln
+
+    - name: Build solution
+      run: dotnet build api/Webshop.sln --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test api/Webshop.sln --configuration Release --no-build --verbosity normal
+
   deploy:
     runs-on: ubuntu-latest
-
+    name: Deploy to Server
+    needs: test  # ✅ This ensures deploy only runs if tests pass
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

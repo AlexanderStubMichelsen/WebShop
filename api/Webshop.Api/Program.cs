@@ -62,20 +62,8 @@ app.UseHttpsRedirection();
 app.UseCors("AppCors");
 app.MapControllers();
 
-// --- Minimal APIs (keep if you still use them) ---
 
 // Health
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
-// Products
-app.MapGet("/api/products", async (WebshopDbContext db) =>
-    await db.Products.ToListAsync());
-
-app.MapPost("/api/products", async (WebshopProduct product, WebshopDbContext db) =>
-{
-    db.Products.Add(product);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/products/{product.Id}", product);
-});
 
 app.Run();
