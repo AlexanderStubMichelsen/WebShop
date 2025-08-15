@@ -378,5 +378,399 @@ namespace Webshop.Api.Controllers
                 TotalPages = (int)Math.Ceiling(total / (double)pageSize)
             });
         }
+
+        [HttpGet("view")]
+        public async Task<IActionResult> ViewAllOrders([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var orders = await _db.Orders
+                .Include(o => o.OrderItems)
+                .OrderByDescending(o => o.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var total = await _db.Orders.CountAsync();
+            var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+            var html = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Orders - Page {page}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        h1 {{ color: #333; margin-bottom: 20px; }}
+        .stats {{ background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+        .order {{ border: 1px solid #ddd; margin-bottom: 20px; border-radius: 8px; overflow: hidden; }}
+        .order-header {{ background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; }}
+        .order-body {{ padding: 15px; }}
+        .status-paid {{ color: #28a745; font-weight: bold; }}
+        .status-pending {{ color: #ffc107; font-weight: bold; }}
+        .status-failed {{ color: #dc3545; font-weight: bold; }}
+        .items {{ margin-top: 10px; }}
+        .item {{ background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 4px; }}
+        .pagination {{ text-align: center; margin: 20px 0; }}
+        .pagination a {{ display: inline-block; padding: 8px 12px; margin: 0 4px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }}
+        .pagination a:hover {{ background: #0056b3; }}
+        .pagination .current {{ background: #6c757d; }}
+        .no-orders {{ text-align: center; padding: 40px; color: #6c757d; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        th {{ background-color: #f2f2f2; }}
+        .refresh {{ float: right; background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; }}
+        .refresh:hover {{ background: #218838; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>
+            📦 Orders Dashboard
+            <a href='/api/orders/view?page={page}&pageSize={pageSize}' class='refresh'>🔄 Refresh</a>
+        </h1>
+        
+        <div class='stats'>
+            <strong>📊 Stats:</strong> 
+            {total} total orders | 
+            Page {page} of {totalPages} | 
+            Showing {Math.Min(pageSize, orders.Count)} orders
+        </div>";
+
+    if (!orders.Any())
+    {
+        html += @"
+        <div class='no-orders'>
+            <h2>No orders found</h2>
+            <p>Complete a purchase to see orders here!</p>
+        </div>";
+    }
+    else
+    {
+        foreach (var order in orders)
+        {
+            var statusClass = order.PaymentStatus?.ToLower() switch
+            {
+                "paid" => "status-paid",
+                "pending" => "status-pending", 
+                _ => "status-failed"
+            };
+
+            html += $@"
+        <div class='order'>
+            <div class='order-header'>
+                <strong>Order #{order.Id}</strong> | 
+                <span class='{statusClass}'>{order.PaymentStatus?.ToUpper()}</span> | 
+                <strong>{order.TotalAmount / 100:F2} {order.Currency}</strong> | 
+                {order.CreatedAt:yyyy-MM-dd HH:mm:ss}
+            </div>
+            <div class='order-body'>
+                <table>
+                    <tr><td><strong>Session ID:</strong></td><td>{order.SessionId}</td></tr>
+                    <tr><td><strong>Customer:</strong></td><td>{order.CustomerEmail}{(string.IsNullOrEmpty(order.CustomerName) ? "" : $" ({order.CustomerName})")}</td></tr>
+                    <tr><td><strong>Payment Method:</strong></td><td>{order.PaymentMethod ?? "N/A"}</td></tr>
+                    <tr><td><strong>Items:</strong></td><td>{order.OrderItems.Count} item(s)</td></tr>
+                </table>";
+
+            if (order.OrderItems.Any())
+            {
+                html += @"
+                <div class='items'>
+                    <h4>📦 Items:</h4>";
+                
+                foreach (var item in order.OrderItems)
+                {
+                    html += $@"
+                    <div class='item'>
+                        <strong>{item.ProductName}</strong> | 
+                        Qty: {item.Quantity} | 
+                        {item.UnitPrice / 100:F2} {item.Currency} each | 
+                        Total: <strong>{item.TotalPrice / 100:F2} {item.Currency}</strong>
+                        {(string.IsNullOrEmpty(item.Description) ? "" : $"<br><small>{item.Description}</small>")}
+                    </div>";
+                }
+                
+                html += "</div>";
+            }
+
+            html += @"
+            </div>
+        </div>";
+        }
+    }
+
+    // Pagination
+    if (totalPages > 1)
+    {
+        html += "<div class='pagination'>";
+        
+        if (page > 1)
+        {
+            html += $"<a href='/api/orders/view?page={page - 1}&pageSize={pageSize}'>← Previous</a>";
+        }
+        
+        for (int i = Math.Max(1, page - 2); i <= Math.Min(totalPages, page + 2); i++)
+        {
+            var currentClass = i == page ? " current" : "";
+            html += $"<a href='/api/orders/view?page={i}&pageSize={pageSize}' class='{currentClass}'>{i}</a>";
+        }
+        
+        if (page < totalPages)
+        {
+            html += $"<a href='/api/orders/view?page={page + 1}&pageSize={pageSize}'>Next →</a>";
+        }
+        
+        html += "</div>";
+    }
+
+    html += @"
+        <div style='margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 5px; text-align: center;'>
+            <p><strong>🔗 API Endpoints:</strong></p>
+            <p>
+                <a href='/api/orders/list'>JSON API</a> | 
+                <a href='/api/orders/view?pageSize=50'>Show 50 per page</a> | 
+                <a href='/api/orders/view?pageSize=100'>Show 100 per page</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+
+    return Content(html, "text/html");
+}
+
+[HttpGet("items/view")]
+public async Task<IActionResult> ViewAllOrderItems([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+{
+    var orderItems = await _db.OrderItems
+        .Include(oi => oi.Order)
+        .OrderByDescending(oi => oi.Order.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+
+    var total = await _db.OrderItems.CountAsync();
+    var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+    var html = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order Items - Page {page}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        h1 {{ color: #333; margin-bottom: 20px; }}
+        .stats {{ background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+        .table-container {{ overflow-x: auto; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+        th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
+        th {{ background-color: #f2f2f2; font-weight: bold; position: sticky; top: 0; }}
+        .item-row:nth-child(even) {{ background-color: #f9f9f9; }}
+        .item-row:hover {{ background-color: #e3f2fd; }}
+        .pagination {{ text-align: center; margin: 20px 0; }}
+        .pagination a {{ display: inline-block; padding: 8px 12px; margin: 0 4px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }}
+        .pagination a:hover {{ background: #0056b3; }}
+        .pagination .current {{ background: #6c757d; }}
+        .no-items {{ text-align: center; padding: 40px; color: #6c757d; }}
+        .refresh {{ float: right; background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; }}
+        .refresh:hover {{ background: #218838; }}
+        .order-link {{ color: #007bff; text-decoration: none; }}
+        .order-link:hover {{ text-decoration: underline; }}
+        .currency {{ font-weight: bold; color: #28a745; }}
+        .product-name {{ font-weight: bold; color: #333; }}
+        .nav-links {{ margin-bottom: 20px; }}
+        .nav-links a {{ display: inline-block; padding: 8px 16px; margin-right: 10px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; }}
+        .nav-links a:hover {{ background: #5a6268; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>
+            📦 Order Items Dashboard
+            <a href='/api/orders/items/view?page={page}&pageSize={pageSize}' class='refresh'>🔄 Refresh</a>
+        </h1>
+        
+        <div class='nav-links'>
+            <a href='/api/orders/view'>← Back to Orders</a>
+            <a href='/api/orders/items/view?pageSize=25'>25 per page</a>
+            <a href='/api/orders/items/view?pageSize=100'>100 per page</a>
+        </div>
+        
+        <div class='stats'>
+            <strong>📊 Stats:</strong> 
+            {total} total order items | 
+            Page {page} of {totalPages} | 
+            Showing {Math.Min(pageSize, orderItems.Count)} items
+        </div>";
+
+    if (!orderItems.Any())
+    {
+        html += @"
+        <div class='no-items'>
+            <h2>No order items found</h2>
+            <p>Complete a purchase to see order items here!</p>
+        </div>";
+    }
+    else
+    {
+        html += @"
+        <div class='table-container'>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item ID</th>
+                        <th>Order ID</th>
+                        <th>Product Name</th>
+                        <th>Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total Price</th>
+                        <th>Currency</th>
+                        <th>Customer</th>
+                        <th>Order Date</th>
+                    </tr>
+                </thead>
+                <tbody>";
+
+        foreach (var item in orderItems)
+        {
+            html += $@"
+                    <tr class='item-row'>
+                        <td>{item.Id}</td>
+                        <td><a href='/api/orders/view?search={item.Order.SessionId}' class='order-link'>#{item.OrderId}</a></td>
+                        <td class='product-name'>{item.ProductName}</td>
+                        <td>{(string.IsNullOrEmpty(item.Description) ? "N/A" : item.Description)}</td>
+                        <td style='text-align: center;'>{item.Quantity}</td>
+                        <td class='currency'>{item.UnitPrice / 100:F2}</td>
+                        <td class='currency'>{item.TotalPrice / 100:F2}</td>
+                        <td>{item.Currency}</td>
+                        <td>{item.Order.CustomerEmail}</td>
+                        <td>{item.Order.CreatedAt:yyyy-MM-dd HH:mm}</td>
+                    </tr>";
+        }
+
+        html += @"
+                </tbody>
+            </table>
+        </div>";
+    }
+
+    // Pagination
+    if (totalPages > 1)
+    {
+        html += "<div class='pagination'>";
+        
+        if (page > 1)
+        {
+            html += $"<a href='/api/orders/items/view?page={page - 1}&pageSize={pageSize}'>← Previous</a>";
+        }
+        
+        for (int i = Math.Max(1, page - 2); i <= Math.Min(totalPages, page + 2); i++)
+        {
+            var currentClass = i == page ? " current" : "";
+            html += $"<a href='/api/orders/items/view?page={i}&pageSize={pageSize}' class='{currentClass}'>{i}</a>";
+        }
+        
+        if (page < totalPages)
+        {
+            html += $"<a href='/api/orders/items/view?page={page + 1}&pageSize={pageSize}'>Next →</a>";
+        }
+        
+        html += "</div>";
+    }
+
+    html += @"
+        <div style='margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 5px; text-align: center;'>
+            <p><strong>🔗 Quick Actions:</strong></p>
+            <p>
+                <a href='/api/orders/view'>View All Orders</a> | 
+                <a href='/api/orders/list'>JSON API - Orders</a> | 
+                <a href='/api/orders/items/json'>JSON API - Items</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>";
+
+    return Content(html, "text/html");
+}
+
+[HttpGet("items/json")]
+public async Task<IActionResult> GetAllOrderItems([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+{
+    var orderItems = await _db.OrderItems
+        .Include(oi => oi.Order)
+        .OrderByDescending(oi => oi.Order.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+
+    var total = await _db.OrderItems.CountAsync();
+
+    return Ok(new
+    {
+        OrderItems = orderItems.Select(oi => new
+        {
+            oi.Id,
+            oi.OrderId,
+            OrderSessionId = oi.Order.SessionId,
+            oi.ProductId,
+            oi.ProductName,
+            oi.Description,
+            oi.Quantity,
+            oi.UnitPrice,
+            oi.TotalPrice,
+            oi.Currency,
+            FormattedUnitPrice = $"{oi.UnitPrice / 100:F2} {oi.Currency}",
+            FormattedTotalPrice = $"{oi.TotalPrice / 100:F2} {oi.Currency}",
+            CustomerEmail = oi.Order.CustomerEmail,
+            OrderCreatedAt = oi.Order.CreatedAt,
+            OrderStatus = oi.Order.PaymentStatus
+        }),
+        Total = total,
+        Page = page,
+        PageSize = pageSize,
+        TotalPages = (int)Math.Ceiling(total / (double)pageSize)
+    });
+}
+
+[HttpGet("stats")]
+public async Task<IActionResult> GetOrderStats()
+{
+    var totalOrders = await _db.Orders.CountAsync();
+    var totalOrderItems = await _db.OrderItems.CountAsync();
+    var totalRevenue = await _db.Orders.Where(o => o.PaymentStatus == "paid").SumAsync(o => o.TotalAmount);
+    var avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    
+    var topProducts = await _db.OrderItems
+        .GroupBy(oi => oi.ProductName)
+        .Select(g => new
+        {
+            ProductName = g.Key,
+            TotalQuantity = g.Sum(oi => oi.Quantity),
+            TotalRevenue = g.Sum(oi => oi.TotalPrice),
+            OrderCount = g.Count()
+        })
+        .OrderByDescending(p => p.TotalQuantity)
+        .Take(5)
+        .ToListAsync();
+
+    return Ok(new
+    {
+        TotalOrders = totalOrders,
+        TotalOrderItems = totalOrderItems,
+        TotalRevenue = totalRevenue,
+        FormattedRevenue = $"{totalRevenue / 100:F2} DKK",
+        AverageOrderValue = avgOrderValue,
+        FormattedAvgOrderValue = $"{avgOrderValue / 100:F2} DKK",
+        TopProducts = topProducts.Select(p => new
+        {
+            p.ProductName,
+            p.TotalQuantity,
+            p.OrderCount,
+            FormattedRevenue = $"{p.TotalRevenue / 100:F2} DKK"
+        })
+    });
+}
     }
 }
