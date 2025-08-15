@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using Stripe;
+using Stripe.Checkout;
 using System.ComponentModel.DataAnnotations;
 using Webshop.Api.Data;
 using Webshop.Api.Models;
@@ -164,6 +166,217 @@ namespace Webshop.Api.Controllers
 
             [Range(0, long.MaxValue)]
             public long AmountTotal { get; set; }
+        }
+
+        [HttpGet("order/{sessionId}")]
+        public async Task<IActionResult> GetOrderDetails(string sessionId)
+        {
+            try
+            {
+                // Get Stripe session with expanded line items
+                var sessionService = new SessionService();
+                var session = sessionService.Get(sessionId, new SessionGetOptions
+                {
+                    Expand = new List<string> {
+                        "line_items",
+                        "line_items.data.price.product",
+                        "customer"
+                    }
+                });
+
+                if (session == null)
+                {
+                    return NotFound(new { message = "Order not found" });
+                }
+
+                // Get customer email
+                string customerEmail = session.CustomerEmail;
+                if (string.IsNullOrEmpty(customerEmail) && session.Customer != null)
+                {
+                    var customerService = new Stripe.CustomerService();
+                    var customer = customerService.Get(session.Customer.Id);
+                    customerEmail = customer.Email;
+                }
+
+                // Extract line items with product details
+                var orderItems = session.LineItems.Data.Select(item => new
+                {
+                    ProductId = item.Price.Product.Id,
+                    ProductName = item.Price.Product.Name,
+                    Description = item.Description ?? item.Price.Product.Description,
+                    Quantity = item.Quantity ?? 0,
+                    UnitPrice = item.Price.UnitAmount ?? 0,
+                    Currency = item.Price.Currency,
+                    TotalPrice = item.AmountTotal,
+                    ProductMetadata = item.Price.Product.Metadata
+                }).ToList();
+
+                // Check if confirmation email was sent
+                var emailLog = await _db.EmailLogs.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.SessionId == sessionId);
+
+                // Build comprehensive order response
+                var orderDetails = new
+                {
+                    // Order Info
+                    OrderId = session.Id,
+                    PaymentIntentId = session.PaymentIntentId,
+                    CreatedAt = session.Created,
+
+                    // Customer Info
+                    CustomerEmail = customerEmail,
+                    CustomerName = session.CustomerDetails?.Name,
+
+                    // Payment Info
+                    PaymentStatus = session.PaymentStatus,
+                    PaymentMethod = session.PaymentMethodTypes?.FirstOrDefault(),
+                    Currency = session.Currency?.ToUpper(),
+
+                    // Amounts
+                    SubtotalAmount = session.AmountSubtotal,
+                    TaxAmount = session.TotalDetails?.AmountTax ?? 0,
+                    TotalAmount = session.AmountTotal,
+
+                    // Formatted amounts for display
+                    FormattedAmounts = new
+                    {
+                        Subtotal = $"{(session.AmountSubtotal ?? 0) / 100:F2} {session.Currency?.ToUpper()}",
+                        Tax = $"{(session.TotalDetails?.AmountTax ?? 0) / 100:F2} {session.Currency?.ToUpper()}",
+                        Total = $"{(session.AmountTotal ?? 0) / 100:F2} {session.Currency?.ToUpper()}"
+                    },
+
+                    // Items
+                    Items = orderItems,
+                    ItemCount = orderItems.Sum(x => x.Quantity),
+
+                    // Email Status
+                    EmailConfirmation = new
+                    {
+                        Sent = emailLog != null,
+                        SentAt = emailLog?.SentAtUtc,
+                        CanResend = true
+                    },
+
+                    // Session URLs (if available)
+                    SuccessUrl = session.SuccessUrl,
+                    CancelUrl = session.CancelUrl,
+
+                    // Metadata
+                    Metadata = session.Metadata
+                };
+
+                return Ok(orderDetails);
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogError(ex, "Stripe error retrieving order {SessionId}", sessionId);
+                return StatusCode(502, new { message = "Error retrieving order from payment provider" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving order details for {SessionId}", sessionId);
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        [HttpGet("order/{sessionId}/summary")]
+        public async Task<IActionResult> GetOrderSummary(string sessionId)
+        {
+            try
+            {
+                var sessionService = new SessionService();
+                var session = await Task.Run(() => sessionService.Get(sessionId, new SessionGetOptions
+                {
+                    Expand = new List<string> { "line_items" }
+                }));
+
+                if (session == null)
+                {
+                    return NotFound(new { message = "Order not found" });
+                }
+
+                var summary = new
+                {
+                    OrderId = session.Id,
+                    Status = session.PaymentStatus,
+                    TotalAmount = session.AmountTotal,
+                    FormattedTotal = $"{(session.AmountTotal ?? 0) / 100:F2} {session.Currency?.ToUpper()}",
+                    ItemCount = session.LineItems.Data.Sum(x => x.Quantity ?? 0),
+                    CreatedAt = session.Created
+                };
+
+                return Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving order summary for {SessionId}", sessionId);
+                return StatusCode(500, new { message = "Internal server error" });
+            }
+        }
+
+        [HttpGet("database/{sessionId}")]
+        public async Task<IActionResult> GetOrderFromDatabase(string sessionId)
+        {
+            var order = await _db.Orders
+                .Include(o => o.OrderItems)
+                .FirstOrDefaultAsync(o => o.SessionId == sessionId);
+
+            if (order == null)
+            {
+                return NotFound(new { message = "Order not found in database" });
+            }
+
+            return Ok(new
+            {
+                order.Id,
+                order.SessionId,
+                order.CustomerEmail,
+                order.CustomerName,
+                order.PaymentStatus,
+                order.TotalAmount,
+                FormattedTotal = $"{order.TotalAmount / 100:F2} {order.Currency}",
+                order.CreatedAt,
+                Items = order.OrderItems.Select(item => new
+                {
+                    item.ProductName,
+                    item.Quantity,
+                    item.UnitPrice,
+                    item.TotalPrice,
+                    FormattedPrice = $"{item.TotalPrice / 100:F2} {item.Currency}"
+                })
+            });
+        }
+
+        [HttpGet("list")]
+        public async Task<IActionResult> GetAllOrders([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var orders = await _db.Orders
+                .Include(o => o.OrderItems)
+                .OrderByDescending(o => o.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var total = await _db.Orders.CountAsync();
+
+            return Ok(new
+            {
+                Orders = orders.Select(o => new
+                {
+                    o.Id,
+                    o.SessionId,
+                    o.CustomerEmail,
+                    o.PaymentStatus,
+                    o.TotalAmount,
+                    FormattedTotal = $"{o.TotalAmount / 100:F2} {o.Currency}",
+                    o.CreatedAt,
+                    ItemCount = o.OrderItems.Count
+                }),
+                Total = total,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(total / (double)pageSize)
+            });
         }
     }
 }

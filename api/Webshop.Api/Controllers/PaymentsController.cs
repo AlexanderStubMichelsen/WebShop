@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore; // ✅ Add this
+using Stripe;
 using Stripe.Checkout;
+using Webshop.Api.Data; // ✅ Add this
 using Webshop.Api.Models;
 using WebshopProduct = Webshop.Api.Models.Product;
 
@@ -9,6 +12,15 @@ namespace Webshop.Api.Controllers
     [Route("api/[controller]")]
     public class PaymentsController : ControllerBase
     {
+        private readonly WebshopDbContext _db; // ✅ Add this
+        private readonly ILogger<PaymentsController> _logger; // ✅ Add this
+
+        public PaymentsController(WebshopDbContext db, ILogger<PaymentsController> logger) // ✅ Add constructor
+        {
+            _db = db;
+            _logger = logger;
+        }
+
         [HttpPost("create-checkout-session")]
         public IActionResult CreateCheckoutSession([FromBody] List<WebshopProduct> products)
         {
@@ -63,7 +75,7 @@ namespace Webshop.Api.Controllers
             });
 
             string customerEmail = session.CustomerEmail;
-            
+
             // If session doesn't have email, try to get it from the customer object
             if (string.IsNullOrEmpty(customerEmail) && session.Customer != null)
             {
@@ -81,6 +93,105 @@ namespace Webshop.Api.Controllers
             });
         }
 
+        [HttpPost("test-save-order/{sessionId}")]
+        public async Task<IActionResult> TestSaveOrder(string sessionId)
+        {
+            try
+            {
+                var sessionService = new SessionService();
+                var session = sessionService.Get(sessionId);
+
+                if (session?.PaymentStatus == "paid")
+                {
+                    await SaveOrderToDatabase(session);
+                    return Ok(new { message = "Order saved successfully" });
+                }
+
+                return BadRequest(new { message = $"Session not paid (status: {session?.PaymentStatus}) or not found" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving order for session {SessionId}", sessionId);
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        private async Task SaveOrderToDatabase(Session session)
+        {
+            try
+            {
+                _logger.LogInformation("Attempting to save order for session {SessionId}", session.Id);
+
+                // Check if order already exists
+                var existingOrder = await _db.Orders.FirstOrDefaultAsync(o => o.SessionId == session.Id);
+                if (existingOrder != null)
+                {
+                    _logger.LogInformation("Order {SessionId} already exists in database", session.Id);
+                    return;
+                }
+
+                // Get detailed session with line items
+                var sessionService = new SessionService();
+                var detailedSession = sessionService.Get(session.Id, new SessionGetOptions
+                {
+                    Expand = new List<string> { "line_items", "line_items.data.price.product" }
+                });
+
+                _logger.LogInformation("Retrieved detailed session with {ItemCount} line items",
+                    detailedSession.LineItems?.Data?.Count ?? 0);
+
+                // Create order
+                var order = new Order
+                {
+                    SessionId = session.Id,
+                    PaymentIntentId = session.PaymentIntentId,
+                    CustomerEmail = session.CustomerEmail ?? session.CustomerDetails?.Email ?? "",
+                    CustomerName = session.CustomerDetails?.Name,
+                    PaymentStatus = session.PaymentStatus,
+                    PaymentMethod = session.PaymentMethodTypes?.FirstOrDefault(),
+                    Currency = session.Currency?.ToUpper() ?? "DKK",
+                    SubtotalAmount = session.AmountSubtotal ?? 0,
+                    TaxAmount = session.TotalDetails?.AmountTax ?? 0,
+                    TotalAmount = session.AmountTotal ?? 0,
+                    CreatedAt = session.Created,
+                    UpdatedAt = DateTime.UtcNow,
+                    Metadata = session.Metadata.Any() ?
+                        System.Text.Json.JsonSerializer.Serialize(session.Metadata) : null
+                };
+
+                // Add order items
+                if (detailedSession.LineItems?.Data != null)
+                {
+                    foreach (var lineItem in detailedSession.LineItems.Data)
+                    {
+                        order.OrderItems.Add(new OrderItem
+                        {
+                            ProductId = lineItem.Price.Product.Id,
+                            ProductName = lineItem.Price.Product.Name,
+                            Description = lineItem.Description ?? lineItem.Price.Product.Description,
+                            Quantity = (int)(lineItem.Quantity ?? 0),
+                            UnitPrice = lineItem.Price.UnitAmount ?? 0,
+                            TotalPrice = lineItem.AmountTotal,
+                            Currency = lineItem.Price.Currency?.ToUpper() ?? "DKK"
+                        });
+                    }
+                }
+
+                _logger.LogInformation("Created order with {ItemCount} items", order.OrderItems.Count);
+
+                _db.Orders.Add(order);
+                await _db.SaveChangesAsync();
+
+                _logger.LogInformation("Successfully saved order {SessionId} to database with ID {OrderId}",
+                    session.Id, order.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save order {SessionId} to database", session.Id);
+                throw; // Re-throw for the controller to handle
+            }
+        }
+
         private string GetFrontendUrl(HttpRequest request)
         {
             // Check if we're in production by looking at the request host
@@ -92,6 +203,21 @@ namespace Webshop.Api.Controllers
             }
 
             return "http://localhost:3000";
+        }
+
+        // Add this to your PaymentsController for testing
+        [HttpGet("test-config")]
+        public IActionResult TestConfig()
+        {
+            var stripeKey = StripeConfiguration.ApiKey;
+            var hasKey = !string.IsNullOrEmpty(stripeKey);
+            var keyPrefix = hasKey ? stripeKey.Substring(0, 12) + "..." : "none";
+            
+            return Ok(new { 
+                HasStripeKey = hasKey,
+                KeyPrefix = keyPrefix,
+                Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Unknown"
+            });
         }
     }
 }

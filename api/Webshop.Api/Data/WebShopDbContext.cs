@@ -11,7 +11,9 @@ namespace Webshop.Api.Data
         }
 
         public DbSet<Product> Products { get; set; } = default!;
-        public DbSet<EmailLog> EmailLogs { get; set; } = default!;   // ← add this
+        public DbSet<EmailLog> EmailLogs { get; set; } = default!;
+        public DbSet<Order> Orders { get; set; } = default!;          // ✅ Add this
+        public DbSet<OrderItem> OrderItems { get; set; } = default!;  // ✅ Add this
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -37,6 +39,22 @@ namespace Webshop.Api.Data
                 new Product { Id = 11, Name = "Bamboo Cutting Board Set", Description = "Eco-friendly kitchen essential with 3 different sizes.", Price = 29.99M, ImageUrl = "https://picsum.photos/300?random=11" },
                 new Product { Id = 12, Name = "Fitness Resistance Bands", Description = "Complete set of 5 bands for full-body workouts at home.", Price = 24.99M, ImageUrl = "https://picsum.photos/300?random=12" }
             );
+
+            // Configure Order relationships
+            modelBuilder.Entity<Order>(entity =>
+            {
+                entity.HasIndex(e => e.SessionId).IsUnique();
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            });
+
+            modelBuilder.Entity<OrderItem>(entity =>
+            {
+                entity.HasOne(oi => oi.Order)
+                      .WithMany(o => o.OrderItems)
+                      .HasForeignKey(oi => oi.OrderId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }
