@@ -31,7 +31,6 @@ jobs:
     needs: test
     name: Migrate DB and Deploy
     env:
-      # Prod-DB connection string som secret (bruges af EF migrations)
       ConnectionStrings__DefaultConnection: ${{ secrets.PROD_CONNECTION_STRING }}
     steps:
       - name: Checkout code
@@ -42,9 +41,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # LØSNING A: eksplicit restore før EF
       - name: Restore (solution)
         run: dotnet restore api/Webshop.sln
+
+      # NY: Byg API i Release så deps.json findes til EF
+      - name: Build API (Release)
+        run: dotnet build api/Webshop.Api/Webshop.Api.csproj -c Release --no-restore
 
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef || true
@@ -53,8 +55,12 @@ jobs:
         run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
       - name: Apply EF Core migrations (prod DB)
-        working-directory: api/Webshop.Api
-        run: dotnet ef database update --no-build --configuration Release
+        run: >
+          dotnet ef database update
+          --no-build
+          --configuration Release
+          --project api/Webshop.Api/Webshop.Api.csproj
+          --startup-project api/Webshop.Api/Webshop.Api.csproj
 
       - name: Publish API
         run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o api/Webshop.Api/publish
