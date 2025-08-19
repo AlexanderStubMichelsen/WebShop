@@ -2,117 +2,100 @@ name: Deploy Webshop Backend
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     name: Run Tests
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore api/Webshop.sln
+      - name: Restore
+        run: dotnet restore api/Webshop.sln
 
-    - name: Build solution
-      run: dotnet build api/Webshop.sln --configuration Release --no-restore
+      - name: Build
+        run: dotnet build api/Webshop.sln -c Release --no-restore
 
-    - name: Run tests
-      run: dotnet test api/Webshop.sln --configuration Release --no-build --verbosity normal
+      - name: Test
+        run: dotnet test api/Webshop.sln -c Release --no-build --verbosity normal
 
-  deploy:
+  migrate_and_deploy:
     runs-on: ubuntu-latest
-    name: Deploy to Server
     needs: test
-
+    name: Migrate DB and Deploy
+    env:
+      # Brug din prod-DB connection string som secret
+      ConnectionStrings__DefaultConnection: ${{ secrets.PROD_CONNECTION_STRING }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Publish API
-      run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o api/Webshop.Api/publish
+      # Kør migrations FRA RUNNEREN (har hele repoet + Migrations-kode)
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef || true
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+      - name: Apply EF Core migrations (prod DB)
+        working-directory: api/Webshop.Api
+        run: dotnet ef database update --no-build
 
-    - name: List publish folder contents
-      run: ls -l api/Webshop.Api/publish
+      # Publish
+      - name: Publish API
+        run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o api/Webshop.Api/publish
 
-    - name: Show working directory
-      run: pwd
+      # Guard: fail hvis publish er tom
+      - name: Verify publish not empty
+        run: |
+          if [ -z "$(ls -A api/Webshop.Api/publish)" ]; then
+            echo "::error::Publish folder is empty"
+            exit 1
+          fi
 
-    - name: List all files
-      run: find . -type f
+      # (valgfrit) vis indhold
+      - name: List publish
+        run: ls -l api/Webshop.Api/publish
 
-    - name: Copy build to server via SCP
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: |
-          api/Webshop.Api/publish
-          api/Webshop.Api/Webshop.Api.csproj
-        target: ${{ secrets.SERVER_BACKEND_PATH }}
+      # SCP: kopier KUN indholdet af publish/
+      - name: Copy build to server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "api/Webshop.Api/publish/*"
+          target: ${{ secrets.SERVER_BACKEND_PATH }}
+          overwrite: true
 
-    - name: List files on server after SCP
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          ls -l ${{ secrets.SERVER_BACKEND_PATH }}
-
-    - name: Install dotnet-ef tool on server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          dotnet tool install --global dotnet-ef || true
-          export PATH="$PATH:$HOME/.dotnet/tools"
-
-    - name: Run EF Core migrations on server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          cd ${{ secrets.SERVER_BACKEND_PATH }}
-          dotnet ef database update --no-build --project Webshop.Api.csproj
-
-    - name: Configure secrets in systemd and restart
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          set -e
-          sudo systemctl stop webshop-api.service || true
-          sudo mkdir -p /etc/systemd/system/webshop-api.service.d
-          cat >/tmp/override.conf << 'EOF'
-          [Service]
-          Environment="SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}"
-          Environment="STRIPE__SecretKey=${{ secrets.STRIPE_SECRET_KEY }}"
-          Environment="STRIPE__WebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
-          EOF
-          sudo mv /tmp/override.conf /etc/systemd/system/webshop-api.service.d/override.conf
-          sudo chmod 644 /etc/systemd/system/webshop-api.service.d/override.conf
-          sudo systemctl daemon-reload
-          sudo systemctl start webshop-api.service
-          sudo systemctl status webshop-api.service --no-pager -l || true
+      - name: Reload service with secrets
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            sudo systemctl stop webshop-api.service || true
+            sudo mkdir -p /etc/systemd/system/webshop-api.service.d
+            cat >/tmp/override.conf << 'EOF'
+            [Service]
+            Environment="SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}"
+            Environment="STRIPE__SecretKey=${{ secrets.STRIPE_SECRET_KEY }}"
+            Environment="STRIPE__WebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+            EOF
+            sudo mv /tmp/override.conf /etc/systemd/system/webshop-api.service.d/override.conf
+            sudo chmod 644 /etc/systemd/system/webshop-api.service.d/override.conf
+            sudo systemctl daemon-reload
+            sudo systemctl start webshop-api.service
+            sudo systemctl status webshop-api.service --no-pager -l || true
