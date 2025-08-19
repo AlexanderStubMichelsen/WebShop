@@ -31,7 +31,7 @@ jobs:
     needs: test
     name: Migrate DB and Deploy
     env:
-      # Brug din prod-DB connection string som secret
+      # Prod-DB connection string som secret (bruges af EF migrations)
       ConnectionStrings__DefaultConnection: ${{ secrets.PROD_CONNECTION_STRING }}
     steps:
       - name: Checkout code
@@ -42,39 +42,42 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Kør migrations FRA RUNNEREN (har hele repoet + Migrations-kode)
+      # LØSNING A: eksplicit restore før EF
+      - name: Restore (solution)
+        run: dotnet restore api/Webshop.sln
+
       - name: Install dotnet-ef
         run: dotnet tool install --global dotnet-ef || true
+
       - name: Add dotnet tools to PATH
         run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
       - name: Apply EF Core migrations (prod DB)
         working-directory: api/Webshop.Api
-        run: dotnet ef database update --no-build
+        run: dotnet ef database update --no-build --configuration Release
 
-      # Publish
       - name: Publish API
         run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o api/Webshop.Api/publish
 
-      # Guard: fail hvis publish er tom
       - name: Verify publish not empty
         run: |
-          if [ -z "$(ls -A api/Webshop.Api/publish)" ]; then
+          shopt -s nullglob
+          files=(api/Webshop.Api/publish/*)
+          if [ ${#files[@]} -eq 0 ]; then
             echo "::error::Publish folder is empty"
             exit 1
           fi
 
-      # (valgfrit) vis indhold
       - name: List publish
         run: ls -l api/Webshop.Api/publish
 
-      # SCP: kopier KUN indholdet af publish/
       - name: Copy build to server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "api/Webshop.Api/publish/*"
+          source: "api/Webshop.Api/publish/**"
           target: ${{ secrets.SERVER_BACKEND_PATH }}
           overwrite: true
 
