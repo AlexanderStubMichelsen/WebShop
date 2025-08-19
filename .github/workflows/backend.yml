@@ -61,7 +61,7 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: |
-          api/Webshop.Api/publish/**
+          api/Webshop.Api/publish
           api/Webshop.Api/Webshop.Api.csproj
         target: ${{ secrets.SERVER_BACKEND_PATH }}
 
