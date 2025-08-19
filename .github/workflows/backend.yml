@@ -43,7 +43,7 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Publish API
-      run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o publish
+      run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o api/Webshop.Api/publish
 
     - name: Copy build to server via SCP
       uses: appleboy/scp-action@v0.1.7
@@ -52,7 +52,7 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: |
-          publish/**
+          api/Webshop.Api/publish/**
           api/Webshop.Api/Webshop.Api.csproj
         target: ${{ secrets.SERVER_BACKEND_PATH }}
 
