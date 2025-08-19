@@ -116,6 +116,18 @@ namespace Webshop.Api.Controllers
                 _logger.LogInformation("Retrieved detailed session with {ItemCount} line items",
                     detailedSession.LineItems?.Data?.Count ?? 0);
 
+                // Extract address from session
+                var address = session.CustomerDetails?.Address;
+
+                // --- SCANDINAVIA CHECK ---
+                var allowedCountries = new[] { "DK", "SE", "NO" };
+                if (address == null || string.IsNullOrWhiteSpace(address.Country) || !allowedCountries.Contains(address.Country.ToUpper()))
+                {
+                    _logger.LogWarning("Order {SessionId} not saved: Country '{Country}' is not in Scandinavia (DK, SE, NO)", session.Id, address?.Country);
+                    return; // Do not save order
+                }
+                // --- END SCANDINAVIA CHECK ---
+
                 // Create order
                 var order = new Order
                 {
@@ -132,7 +144,12 @@ namespace Webshop.Api.Controllers
                     CreatedAt = session.Created,
                     UpdatedAt = DateTime.UtcNow,
                     Metadata = session.Metadata.Any() ?
-                        System.Text.Json.JsonSerializer.Serialize(session.Metadata) : null
+                        System.Text.Json.JsonSerializer.Serialize(session.Metadata) : null,
+                    AddressLine1 = address?.Line1,
+                    AddressLine2 = address?.Line2,
+                    City = address?.City,
+                    PostalCode = address?.PostalCode,
+                    Country = address?.Country
                 };
 
                 // Add order items

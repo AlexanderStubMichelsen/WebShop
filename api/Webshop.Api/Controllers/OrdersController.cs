@@ -338,6 +338,13 @@ namespace Webshop.Api.Controllers
                 order.TotalAmount,
                 FormattedTotal = $"{order.TotalAmount / 100:F2} {order.Currency}",
                 order.CreatedAt,
+                Address = new {
+                    order.AddressLine1,
+                    order.AddressLine2,
+                    order.City,
+                    order.PostalCode,
+                    order.Country
+                },
                 Items = order.OrderItems.Select(item => new
                 {
                     item.ProductName,
@@ -372,6 +379,13 @@ namespace Webshop.Api.Controllers
                     o.TotalAmount,
                     FormattedTotal = $"{o.TotalAmount / 100:F2} {o.Currency}",
                     o.CreatedAt,
+                    Address = new {
+                        o.AddressLine1,
+                        o.AddressLine2,
+                        o.City,
+                        o.PostalCode,
+                        o.Country
+                    },
                     ItemCount = o.OrderItems.Count
                 }),
                 Total = total,
@@ -470,6 +484,14 @@ namespace Webshop.Api.Controllers
                     <tr><td><strong>Session ID:</strong></td><td>{order.SessionId}</td></tr>
                     <tr><td><strong>Customer:</strong></td><td>{order.CustomerEmail}{(string.IsNullOrEmpty(order.CustomerName) ? "" : $" ({order.CustomerName})")}</td></tr>
                     <tr><td><strong>Payment Method:</strong></td><td>{order.PaymentMethod ?? "N/A"}</td></tr>
+                    <tr><td><strong>Address:</strong></td>
+                        <td>
+                            {order.AddressLine1 ?? ""}<br/>
+                            {order.AddressLine2 ?? ""}<br/>
+                            {order.City ?? ""}, {order.PostalCode ?? ""}<br/>
+                            {order.Country ?? ""}
+                        </td>
+                    </tr>
                     <tr><td><strong>Items:</strong></td><td>{order.OrderItems.Count} item(s)</td></tr>
                 </table>";
 
@@ -630,24 +652,32 @@ public async Task<IActionResult> ViewAllOrderItems([FromQuery] int page = 1, [Fr
                         <th>Currency</th>
                         <th>Customer</th>
                         <th>Order Date</th>
+                        <th>Address</th>
                     </tr>
                 </thead>
                 <tbody>";
 
         foreach (var item in orderItems)
         {
+            var order = item.Order;
             html += $@"
                     <tr class='item-row'>
                         <td>{item.Id}</td>
-                        <td><a href='/api/orders/view?search={item.Order.SessionId}' class='order-link'>#{item.OrderId}</a></td>
+                        <td><a href='/api/orders/view?search={order.SessionId}' class='order-link'>#{item.OrderId}</a></td>
                         <td class='product-name'>{item.ProductName}</td>
                         <td>{(string.IsNullOrEmpty(item.Description) ? "N/A" : item.Description)}</td>
                         <td style='text-align: center;'>{item.Quantity}</td>
                         <td class='currency'>{item.UnitPrice / 100:F2}</td>
                         <td class='currency'>{item.TotalPrice / 100:F2}</td>
                         <td>{item.Currency}</td>
-                        <td>{item.Order.CustomerEmail}</td>
-                        <td>{item.Order.CreatedAt:yyyy-MM-dd HH:mm}</td>
+                        <td>{order.CustomerEmail}</td>
+                        <td>{order.CreatedAt:yyyy-MM-dd HH:mm}</td>
+                        <td>
+                            {order.AddressLine1 ?? ""}<br/>
+                            {order.AddressLine2 ?? ""}<br/>
+                            {order.City ?? ""}, {order.PostalCode ?? ""}<br/>
+                            {order.Country ?? ""}
+                        </td>
                     </tr>";
         }
 
@@ -727,7 +757,14 @@ public async Task<IActionResult> GetAllOrderItems([FromQuery] int page = 1, [Fro
             FormattedTotalPrice = $"{oi.TotalPrice / 100:F2} {oi.Currency}",
             CustomerEmail = oi.Order.CustomerEmail,
             OrderCreatedAt = oi.Order.CreatedAt,
-            OrderStatus = oi.Order.PaymentStatus
+            OrderStatus = oi.Order.PaymentStatus,
+            Address = new {
+                oi.Order.AddressLine1,
+                oi.Order.AddressLine2,
+                oi.Order.City,
+                oi.Order.PostalCode,
+                oi.Order.Country
+            }
         }),
         Total = total,
         Page = page,

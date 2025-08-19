@@ -156,7 +156,12 @@ namespace Webshop.Api.Controllers
                     CreatedAt = session.Created,
                     UpdatedAt = DateTime.UtcNow,
                     Metadata = session.Metadata.Any() ?
-                        System.Text.Json.JsonSerializer.Serialize(session.Metadata) : null
+                        System.Text.Json.JsonSerializer.Serialize(session.Metadata) : null,
+                    AddressLine1 = session.CustomerDetails?.Address?.Line1,
+                    AddressLine2 = session.CustomerDetails?.Address?.Line2,
+                    City = session.CustomerDetails?.Address?.City,
+                    PostalCode = session.CustomerDetails?.Address?.PostalCode,
+                    Country = session.CustomerDetails?.Address?.Country
                 };
 
                 // Add order items

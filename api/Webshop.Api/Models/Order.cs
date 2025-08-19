@@ -41,5 +41,21 @@ namespace Webshop.Api.Models
         // JSON field for additional metadata
         [StringLength(2000)]
         public string? Metadata { get; set; }
+
+        // Shipping address fields
+        [StringLength(200)]
+        public string? AddressLine1 { get; set; }
+        
+        [StringLength(200)]
+        public string? AddressLine2 { get; set; }
+        
+        [StringLength(100)]
+        public string? City { get; set; }
+        
+        [StringLength(20)]
+        public string? PostalCode { get; set; }
+        
+        [StringLength(100)]
+        public string? Country { get; set; }
     }
 }
