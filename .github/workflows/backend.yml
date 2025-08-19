@@ -9,58 +9,31 @@ jobs:
     runs-on: ubuntu-latest
     name: Run Tests
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
       - name: Restore
         run: dotnet restore api/Webshop.sln
-
       - name: Build
         run: dotnet build api/Webshop.sln -c Release --no-restore
-
       - name: Test
         run: dotnet test api/Webshop.sln -c Release --no-build --verbosity normal
 
-  migrate_and_deploy:
+  deploy:
     runs-on: ubuntu-latest
     needs: test
-    name: Migrate DB and Deploy
+    name: Deploy + Server-side EF (SQLite)
     env:
-      ConnectionStrings__DefaultConnection: ${{ secrets.PROD_CONNECTION_STRING }}
+      # Sti til SQLite på serveren (tilpas hvis din service lægger filen et andet sted)
+      SERVER_SQLITE_PATH: /var/www/webshop-api/app.db
+      SERVER_SRC_PATH: /opt/webshop-src
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
-      - name: Restore (solution)
-        run: dotnet restore api/Webshop.sln
-
-      # NY: Byg API i Release så deps.json findes til EF
-      - name: Build API (Release)
-        run: dotnet build api/Webshop.Api/Webshop.Api.csproj -c Release --no-restore
-
-      - name: Install dotnet-ef
-        run: dotnet tool install --global dotnet-ef || true
-
-      - name: Add dotnet tools to PATH
-        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-
-      - name: Apply EF Core migrations (prod DB)
-        run: >
-          dotnet ef database update
-          --no-build
-          --configuration Release
-          --project api/Webshop.Api/Webshop.Api.csproj
-          --startup-project api/Webshop.Api/Webshop.Api.csproj
 
       - name: Publish API
         run: dotnet publish api/Webshop.Api/Webshop.Api.csproj -c Release -o api/Webshop.Api/publish
@@ -74,10 +47,7 @@ jobs:
             exit 1
           fi
 
-      - name: List publish
-        run: ls -l api/Webshop.Api/publish
-
-      - name: Copy build to server via SCP
+      - name: Copy published build to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -87,7 +57,43 @@ jobs:
           target: ${{ secrets.SERVER_BACKEND_PATH }}
           overwrite: true
 
-      - name: Reload service with secrets
+      # --- Kun til EF på serveren: kopier projektkilde så dotnet-ef kan design-time bygge ---
+      - name: Copy API source (for EF) to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: |
+            api/Webshop.Api/**
+            api/Webshop.sln
+          target: ${{ env.SERVER_SRC_PATH }}
+          overwrite: true
+
+      - name: Run EF Core migrations on server (SQLite)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            export PATH="$PATH:$HOME/.dotnet/tools"
+            dotnet --info >/dev/null
+            dotnet tool install --global dotnet-ef || true
+            # Sørg for at sqlite-filen eksisterer og mappe er skrivbar
+            sudo mkdir -p "$(dirname '${{ env.SERVER_SQLITE_PATH }}')"
+            sudo touch "${{ env.SERVER_SQLITE_PATH }}"
+            sudo chown "$USER":"$USER" "${{ env.SERVER_SQLITE_PATH }}"
+            cd "${{ env.SERVER_SRC_PATH }}/api/Webshop.Api"
+            # Kør migrations mod serverens *rigtige* filsti
+            dotnet ef database update \
+              --project Webshop.Api.csproj \
+              --startup-project Webshop.Api.csproj \
+              --configuration Release \
+              --connection "Data Source=${{ env.SERVER_SQLITE_PATH }}"
+
+      - name: Configure secrets in systemd and restart
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
