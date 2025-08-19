@@ -7,6 +7,7 @@ using Stripe.Checkout;
 using System.ComponentModel.DataAnnotations;
 using Webshop.Api.Data;
 using Webshop.Api.Models;
+using Webshop.Api.Services;
 
 namespace Webshop.Api.Controllers
 {
@@ -17,12 +18,14 @@ namespace Webshop.Api.Controllers
         private readonly IConfiguration _config;
         private readonly WebshopDbContext _db;
         private readonly ILogger<OrdersController> _logger;
+        private readonly ISessionService _sessionService;
 
-        public OrdersController(IConfiguration config, WebshopDbContext db, ILogger<OrdersController> logger)
+        public OrdersController(IConfiguration config, WebshopDbContext db, ILogger<OrdersController> logger, ISessionService sessionService)
         {
             _config = config;
             _db = db;
             _logger = logger;
+            _sessionService = sessionService;
         }
 
         [HttpPost("send-confirmation")]
@@ -174,8 +177,7 @@ namespace Webshop.Api.Controllers
             try
             {
                 // Get Stripe session with expanded line items
-                var sessionService = new SessionService();
-                var session = sessionService.Get(sessionId, new SessionGetOptions
+                var session = _sessionService.Get(sessionId, new SessionGetOptions
                 {
                     Expand = new List<string> {
                         "line_items",
@@ -186,7 +188,7 @@ namespace Webshop.Api.Controllers
 
                 if (session == null)
                 {
-                    return NotFound(new { message = "Order not found" });
+                    return NotFound();
                 }
 
                 // Get customer email

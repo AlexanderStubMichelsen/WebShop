@@ -30,6 +30,7 @@ builder.Services.AddCors(options =>
 
 // Register email service used by webhook/controller
 builder.Services.AddScoped<OrderEmailService>();
+builder.Services.AddScoped<Webshop.Api.Services.ISessionService, Webshop.Api.Services.SessionServiceImpl>();
 
 // --- Build the app FIRST ---
 var app = builder.Build();
