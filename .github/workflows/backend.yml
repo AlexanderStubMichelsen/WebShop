@@ -87,6 +87,16 @@ jobs:
           sudo systemctl start webshop-api.service
           sudo systemctl status webshop-api.service --no-pager -l || true
 
+    - name: Install dotnet-ef tool on server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          dotnet tool install --global dotnet-ef || true
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
     - name: Run EF Core migrations on server
       uses: appleboy/ssh-action@v1.0.0
       with:
