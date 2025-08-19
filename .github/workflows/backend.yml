@@ -104,5 +104,6 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
           cd ${{ secrets.SERVER_BACKEND_PATH }}
           dotnet ef database update --no-build --project Webshop.Api/Webshop.Api.csproj
