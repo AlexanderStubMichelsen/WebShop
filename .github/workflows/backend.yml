@@ -106,4 +106,4 @@ jobs:
         script: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           cd ${{ secrets.SERVER_BACKEND_PATH }}
-          dotnet ef database update --no-build --project Webshop.Api/Webshop.Api.csproj
+          dotnet ef database update --no-build --project Webshop.Api.csproj
