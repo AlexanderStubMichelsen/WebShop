@@ -51,7 +51,9 @@ jobs:
         host: ${{ secrets.SERVER_HOST }}
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: publish/**
+        source: |
+          publish/**
+          api/Webshop.Api/Webshop.Api.csproj
         target: ${{ secrets.SERVER_BACKEND_PATH }}
 
     - name: Configure secrets in systemd and restart
