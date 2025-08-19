@@ -25,7 +25,6 @@ jobs:
     needs: test
     name: Deploy + Server-side EF (SQLite)
     env:
-      # Sti til SQLite på serveren (tilpas hvis din service lægger filen et andet sted)
       SERVER_SQLITE_PATH: /var/www/webshop-api/app.db
       SERVER_SRC_PATH: /opt/webshop-src
     steps:
@@ -47,28 +46,49 @@ jobs:
             exit 1
           fi
 
+      - name: List publish
+        run: ls -la api/Webshop.Api/publish
+
       - name: Copy published build to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "api/Webshop.Api/publish/**"
+          source: "api/Webshop.Api/publish/*"
           target: ${{ secrets.SERVER_BACKEND_PATH }}
           overwrite: true
 
-      # --- Kun til EF på serveren: kopier projektkilde så dotnet-ef kan design-time bygge ---
-      - name: Copy API source (for EF) to server
+      # --- NYT: pak kildekoden til ét arkiv, scp, og udpak på serveren ---
+      - name: Archive API source (for EF migrations)
+        run: |
+          tar -czf api_src.tgz \
+            api/Webshop.Api \
+            api/Webshop.sln
+
+      - name: SCP source tarball to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: |
-            api/Webshop.Api/**
-            api/Webshop.sln
-          target: ${{ env.SERVER_SRC_PATH }}
+          source: "api_src.tgz"
+          target: "/tmp"
           overwrite: true
+
+      - name: Extract source on server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            sudo mkdir -p "${{ env.SERVER_SRC_PATH }}"
+            sudo chown "$USER":"$USER" "${{ env.SERVER_SRC_PATH }}"
+            tar -xzf /tmp/api_src.tgz -C "${{ env.SERVER_SRC_PATH }}" --strip-components=1
+            rm -f /tmp/api_src.tgz
+            ls -la "${{ env.SERVER_SRC_PATH }}"
 
       - name: Run EF Core migrations on server (SQLite)
         uses: appleboy/ssh-action@v1.0.0
@@ -81,12 +101,13 @@ jobs:
             export PATH="$PATH:$HOME/.dotnet/tools"
             dotnet --info >/dev/null
             dotnet tool install --global dotnet-ef || true
-            # Sørg for at sqlite-filen eksisterer og mappe er skrivbar
+
+            # Sørg for at DB-filen findes og er skrivbar
             sudo mkdir -p "$(dirname '${{ env.SERVER_SQLITE_PATH }}')"
             sudo touch "${{ env.SERVER_SQLITE_PATH }}"
             sudo chown "$USER":"$USER" "${{ env.SERVER_SQLITE_PATH }}"
+
             cd "${{ env.SERVER_SRC_PATH }}/api/Webshop.Api"
-            # Kør migrations mod serverens *rigtige* filsti
             dotnet ef database update \
               --project Webshop.Api.csproj \
               --startup-project Webshop.Api.csproj \
