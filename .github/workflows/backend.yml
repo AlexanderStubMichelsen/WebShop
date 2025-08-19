@@ -107,7 +107,9 @@ jobs:
             sudo touch "${{ env.SERVER_SQLITE_PATH }}"
             sudo chown "$USER":"$USER" "${{ env.SERVER_SQLITE_PATH }}"
 
-            cd "${{ env.SERVER_SRC_PATH }}/api/Webshop.Api"
+            # VIGTIGT: sti uden 'api/' pga. --strip-components=1
+            cd "${{ env.SERVER_SRC_PATH }}/Webshop.Api"
+
             dotnet ef database update \
               --project Webshop.Api.csproj \
               --startup-project Webshop.Api.csproj \
