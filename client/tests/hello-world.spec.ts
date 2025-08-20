@@ -1,12 +1,25 @@
 import { test, expect } from '@playwright/test';
 
 test('homepage loads and displays products', async ({ page }) => {
-  await page.goto('/');
+  await page.route('**/api/products', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 1,
+          name: 'Test Product',
+          description: 'A test product',
+          price: 99,
+          imageUrl: 'https://via.placeholder.com/150'
+        }
+      ])
+    });
+  });
 
-  // Heading is visible
+  await page.goto('/');
   await expect(page.getByRole('heading', { name: /featured products/i })).toBeVisible();
 
-  // At least one product card is rendered
   const cards = page.locator('[data-testid="product-card"]');
   await expect(cards.first()).toBeVisible();
   await expect.poll(async () => cards.count()).toBeGreaterThan(0);
@@ -32,8 +45,23 @@ test('homepage loads and displays products', async ({ page }) => {
 
 // Optionally, test adding a product to the cart
 test('can add a product to the cart', async ({ page }) => {
-  await page.goto('/');
+  await page.route('**/api/products', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 1,
+          name: 'Test Product',
+          description: 'A test product',
+          price: 99,
+          imageUrl: 'https://via.placeholder.com/150'
+        }
+      ])
+    });
+  });
 
+  await page.goto('/');
   const firstAddButton = page.getByRole('button', { name: /add to cart/i }).first();
   await firstAddButton.click();
 
