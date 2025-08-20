@@ -64,6 +64,10 @@ jobs:
         working-directory: client
         run: npm run build
 
+      - name: Export static site
+        working-directory: client
+        run: npm run export
+
       - name: Nuke old frontend files on server
         uses: appleboy/ssh-action@v1.0.0
         with:
