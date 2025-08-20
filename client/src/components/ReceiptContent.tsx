@@ -15,7 +15,7 @@ type SessionData = {
 
 export default function ReceiptContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get("session_id");
+  const sessionId = searchParams ? searchParams.get("session_id") : null;
   const [session, setSession] = useState<SessionData | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
