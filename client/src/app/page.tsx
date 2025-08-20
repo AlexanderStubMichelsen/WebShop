@@ -11,9 +11,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const apiUrl = getApiUrl();
-    
     console.log('Using API URL:', apiUrl);
-    
     fetch(`${apiUrl}/api/products`)
       .then((res) => res.json())
       .then(setProducts)
@@ -46,6 +44,7 @@ export default function HomePage() {
           {products.map((product) => (
             <div
               key={product.id}
+              data-testid="product-card" // <-- Added for Playwright tests
               className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition flex flex-col"
             >
               <img

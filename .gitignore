@@ -186,3 +186,29 @@ UpgradeLog*.htm
 
 # Local development certificates
 *.pfx
+
+# Playwright test output
+playwright-report/
+test-results/
+
+# VS Code workspace settings (if you use them)
+.vscode/*.code-workspace
+
+# Mac/Linux swap files
+*.swp
+*.swo
+
+# Windows Thumbs.db (already present, but just in case)
+Thumbs.db
+
+# npm cache
+.npm/
+
+# Yarn cache
+.yarn/
+
+# pnpm cache
+.pnpm/
+
+# Coverage for Playwright
+coverage/
