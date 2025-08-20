@@ -6,14 +6,16 @@ const nextConfig: NextConfig = {
   ...(isExport
     ? {
         output: "export",
-        images: { unoptimized: true }, // required for static export
+        images: {
+          unoptimized: true,
+          domains: ["via.placeholder.com", "picsum.photos"],
+        },
       }
     : {
-        // normal dev/prod server; API routes work
+        images: {
+          domains: ["via.placeholder.com", "picsum.photos"],
+        },
       }),
-  images: {
-    domains: ["via.placeholder.com"], // add any domains you use
-  },
 };
 
 export default nextConfig;
