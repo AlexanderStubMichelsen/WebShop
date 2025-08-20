@@ -28,13 +28,9 @@ jobs:
         working-directory: client
         run: npm ci
 
-      - name: Build (production)
+      - name: Build (static export)
         working-directory: client
-        run: npm run build
-
-      - name: Export static site
-        working-directory: client
-        run: npm run export
+        run: npm run build   # requires output:'export' in next.config.(js|ts)
 
       - name: Run Playwright tests
         working-directory: client
@@ -64,7 +60,7 @@ jobs:
         working-directory: client
         run: npm ci
 
-      - name: Build (production)
+      - name: Build (static export)
         working-directory: client
         run: npm run build
 
@@ -89,7 +85,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: client/out/**
+          source: client/out/**                # <— use a glob
           target: ${{ secrets.SERVER_FRONTEND_PATH }}/
           strip_components: 2                  # <— drops "client/out"
 
