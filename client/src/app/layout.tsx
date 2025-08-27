@@ -17,7 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-gray-100 text-gray-900">
         <CartProvider>
-          <nav className="sticky top-0 z-50 bg-white border-b shadow-sm px-6 py-4 flex justify-between items-center">
+          <nav className="sticky top-0 z-50 bg-[#dabe4f] border-b shadow-sm px-6 py-4 flex justify-between items-center">
             <div className="text-2xl font-extrabold tracking-tight text-blue-600 hover:text-blue-700 transition-colors duration-200">
               <Link href="/">🛍️ MyShop</Link>
             </div>
