@@ -23,7 +23,7 @@ export default function HomePage() {
       {/* Video background */}
       <video
         className="fixed inset-0 w-full h-full object-cover z-0"
-        src="/153450-805374052_small.mp4"
+        src="/153450-805374052_small-ezgif.com-reverse-video.mp4"
         autoPlay
         loop
         muted
