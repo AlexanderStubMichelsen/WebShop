@@ -23,9 +23,14 @@ builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AppCors", p => p
-        .WithOrigins("http://localhost:3000", "https://shop.devdisplay.online")
+        .WithOrigins(
+            "http://localhost:3000",
+            "https://shop.devdisplay.online"
+        )
         .AllowAnyHeader()
-        .AllowAnyMethod());
+        .AllowAnyMethod()
+        .AllowCredentials() // Add this if you use cookies/auth
+    );
 });
 
 // Register email service used by webhook/controller
