@@ -22,47 +22,57 @@ namespace Webshop.Api.Controllers
         }
 
         [HttpPost("create-checkout-session")]
-        public IActionResult CreateCheckoutSession([FromBody] List<WebshopProduct> products)
+        public async Task<IActionResult> CreateCheckoutSession([FromBody] List<WebshopProduct> products)
         {
-            var lineItems = new List<SessionLineItemOptions>();
-            foreach (var product in products)
+            try
             {
-                lineItems.Add(new SessionLineItemOptions
+                var lineItems = new List<SessionLineItemOptions>();
+                foreach (var product in products)
                 {
-                    PriceData = new SessionLineItemPriceDataOptions
+                    lineItems.Add(new SessionLineItemOptions
                     {
-                        UnitAmount = (long)(product.Price * 100),
-                        Currency = "dkk",
-                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        PriceData = new SessionLineItemPriceDataOptions
                         {
-                            Name = product.Name,
-                            Description = product.Description,
+                            UnitAmount = (long)(product.Price * 100),
+                            Currency = "dkk",
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = product.Name,
+                                Description = product.Description,
+                            },
                         },
-                    },
-                    Quantity = product.Quantity,
-                });
+                        Quantity = product.Quantity,
+                    });
+                }
+
+                var frontendUrl = GetFrontendUrl(Request);
+
+                var options = new SessionCreateOptions
+                {
+                    PaymentMethodTypes = new List<string> { "card", "mobilepay" },
+                    LineItems = lineItems,
+                    Mode = "payment",
+                    CustomerCreation = "always",
+                    BillingAddressCollection = "required",
+                    SuccessUrl = $"{frontendUrl}/receipt?session_id={{CHECKOUT_SESSION_ID}}",
+                    CancelUrl = $"{frontendUrl}/cart",
+                };
+
+                var service = new SessionService();
+                Session session = await service.CreateAsync(options);
+
+                return Ok(new { url = session.Url });
             }
-
-            var frontendUrl = GetFrontendUrl(Request);
-
-            var options = new SessionCreateOptions
+            catch (StripeException ex)
             {
-                PaymentMethodTypes = new List<string> {
-                    "card",
-                    "mobilepay"  // ✅ Added MobilePay
-                },
-                LineItems = lineItems,
-                Mode = "payment",
-                CustomerCreation = "always",
-                BillingAddressCollection = "required",
-                SuccessUrl = $"{frontendUrl}/receipt?session_id={{CHECKOUT_SESSION_ID}}",
-                CancelUrl = $"{frontendUrl}/cart",
-            };
-
-            var service = new SessionService();
-            Session session = service.Create(options);
-
-            return Ok(new { url = session.Url });
+                _logger.LogError(ex, "Stripe error creating checkout session");
+                return StatusCode(500, new { message = "Stripe error: " + ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "General error creating checkout session");
+                return StatusCode(500, new { message = "Server error: " + ex.Message });
+            }
         }
 
         [HttpGet("session/{sessionId}")]
